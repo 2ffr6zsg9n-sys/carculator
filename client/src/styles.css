@@ -16,7 +16,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
-button, input, select { font: inherit; }
+button, input, select, textarea { font: inherit; }
 
 body::before {
   content: "";
@@ -189,7 +189,8 @@ fieldset {
   max-width: 720px;
 }
 input,
-select {
+select,
+textarea {
   width: 100%;
   max-width: 720px;
   min-height: 44px;
@@ -198,6 +199,10 @@ select {
   border-radius: 0;
   padding: 9px 10px;
   outline: none;
+}
+textarea {
+  min-height: 110px;
+  resize: vertical;
 }
 select {
   appearance: none;
@@ -211,6 +216,7 @@ select {
 }
 input:focus,
 select:focus,
+textarea:focus,
 button:focus {
   outline: 3px solid #ffdd00;
   outline-offset: 0;
@@ -421,6 +427,20 @@ button:focus {
   color: #0b0c0c;
   font-size: 36px;
   line-height: 1.05;
+}
+.fleet-email-panel {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.fleet-email-panel textarea {
+  display: block;
+  max-width: 100%;
+  margin-top: 8px;
+}
+.email-button {
+  display: inline-block;
+  text-decoration: none;
 }
 .admin-tabs {
   display: flex;

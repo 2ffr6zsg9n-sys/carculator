@@ -119,6 +119,7 @@ type AdminTableConfig = {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ?? "https://1g0vserusc.execute-api.eu-west-2.amazonaws.com";
 const APP_BUILD = "2026-06-21-results-v2";
+const FLEET_MANAGEMENT_EMAIL = "fleet.management@swyt.nhs.uk";
 
 function BrandHeader() {
   return (
@@ -452,6 +453,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [vehicleType, setVehicleType] = useState("");
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
   const [results, setResults] = useState<QuoteResult[]>([]);
+  const [optionalExtras, setOptionalExtras] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<{ type: "idle" | "loading" | "error"; message?: string }>({ type: "loading" });
 
   useEffect(() => {
@@ -567,6 +569,36 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       hourlyRate,
       minimumRate
     };
+  }
+
+  function fleetEmailLink(result: QuoteResult) {
+    const extras = optionalExtras[result.vehicle.vehicleId] || "None specified";
+    const nmwStatus = result.nmwSkipped
+      ? "Eligibility subject to National Minimum Wage check"
+      : "National Minimum Wage check completed in CARculator";
+    const rows = [
+      ["Vehicle", result.vehicle.vehicleName],
+      ["Fuel type", result.vehicle.fuelType],
+      ["Employer", selectedEmployer?.organisation ?? "Not selected"],
+      ["Annual mileage", `${annualMileage.toLocaleString("en-GB")} miles`],
+      ["List price", currency(result.vehicle.listPrice)],
+      ["BIK rate", `${percent(result.bikRate)} (${result.bikSource})`],
+      ["Monthly salary sacrifice", currency(result.salarySacrificeMonthly)],
+      ["Estimated monthly cost", currency(result.netMonthly)],
+      ["NMW status", nmwStatus]
+    ];
+    const body = [
+      "I am interested in ordering the following vehicle.",
+      "",
+      ...rows.map(([label, value]) => `${label}: ${value}`),
+      "",
+      "Optional extras:",
+      extras,
+      "",
+      "Please prepare a revised quote, including any optional extras, and advise on the next steps for ordering the vehicle."
+    ].join("\n");
+    const subject = `Lease car order request - ${result.vehicle.vehicleName}`;
+    return `mailto:${FLEET_MANAGEMENT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
   function benefitRateForVehicle(vehicle: Vehicle) {
@@ -1003,6 +1035,24 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                         Eligibility subject to National Minimum Wage check.
                       </div>
                     )}
+                    <div className="fleet-email-panel">
+                      <label htmlFor={`optional-extras-${result.vehicle.vehicleId}`}>Optional extras</label>
+                      <textarea
+                        id={`optional-extras-${result.vehicle.vehicleId}`}
+                        value={optionalExtras[result.vehicle.vehicleId] ?? ""}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setOptionalExtras((current) => ({
+                            ...current,
+                            [result.vehicle.vehicleId]: nextValue
+                          }));
+                        }}
+                        placeholder="Enter any optional extras you would like Fleet Management to include."
+                      />
+                      <a className="service-button email-button" href={fleetEmailLink(result)}>
+                        Send to Fleet Management
+                      </a>
+                    </div>
                   </>
                 )}
               </article>
