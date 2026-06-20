@@ -38,13 +38,9 @@ body::before {
   color: #fff;
   font-size: 29px;
   font-weight: 700;
-  font-style: italic;
-  letter-spacing: -2px;
+  font-style: normal;
+  letter-spacing: -1px;
   line-height: 1;
-  transform: skew(-8deg);
-}
-.nhs-mark::first-line {
-  transform: skew(8deg);
 }
 .brand-name {
   color: var(--nhs-dark-blue);
@@ -143,17 +139,36 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   border-bottom: 1px solid var(--border);
   padding-bottom: 16px;
 }
-.progress-steps span {
+.progress-steps span,
+.progress-steps button {
   display: inline-block;
   border-left: 4px solid var(--border);
   color: var(--text-muted);
   padding: 7px 12px;
   font-weight: 700;
+  font-size: 16px;
+  line-height: 1.25;
+  text-align: left;
 }
-.progress-steps span.active {
+.progress-steps span.current {
   border-left-color: var(--nhs-blue);
   background: var(--nhs-light-blue);
   color: #0b0c0c;
+}
+.progress-steps button.completed {
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-left-color: var(--nhs-blue);
+  background: transparent;
+  color: var(--nhs-blue);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.progress-steps button.completed:hover {
+  background: var(--nhs-light-blue);
+  color: var(--nhs-dark-blue);
 }
 
 label,

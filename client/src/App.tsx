@@ -134,7 +134,7 @@ function BrandHeader() {
 function CopyrightFooter() {
   return (
     <footer className="site-footer">
-      © {new Date().getFullYear()} South West Yorkshire NHS Foundation Trust
+      © {new Date().getFullYear()} South West Yorkshire Teaching Partnership NHS FT
     </footer>
   );
 }
@@ -697,10 +697,30 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   return (
     <section className="service-panel">
       <div className="progress-steps" aria-label="Quote progress">
-        <span className={step >= 1 ? "active" : ""}>1. Your details</span>
-        <span className={step >= 2 ? "active" : ""}>2. Minimum wage check</span>
-        <span className={step >= 3 ? "active" : ""}>3. Choose vehicles</span>
-        <span className={step >= 4 ? "active" : ""}>4. Your quote</span>
+        {([
+          [1, "1. Your details"],
+          [2, "2. Minimum wage check"],
+          [3, "3. Choose vehicles"],
+          [4, "4. Your quote"]
+        ] as const).map(([targetStep, label]) => (
+          targetStep < step ? (
+            <button
+              key={targetStep}
+              type="button"
+              className="completed"
+              onClick={() => {
+                setStatus({ type: "idle" });
+                setStep(targetStep);
+              }}
+            >
+              {label}
+            </button>
+          ) : (
+            <span key={targetStep} className={targetStep === step ? "current" : ""}>
+              {label}
+            </span>
+          )
+        ))}
       </div>
 
       {step === 1 && (
