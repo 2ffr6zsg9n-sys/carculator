@@ -278,7 +278,7 @@ function pensionLabel(rate: PensionRate) {
 }
 
 function afcLabel(rate: AgendaForChangePayRate) {
-  return `Band ${rate.band} ${rate.payStep}: ${currency(rate.annualSalary)}`;
+  return `Band ${rate.band} — ${currency(rate.annualSalary)}`;
 }
 
 function isElectricHybrid(vehicle: Vehicle) {
@@ -442,8 +442,11 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [pensionTier, setPensionTier] = useState("");
   const [skipNMW, setSkipNMW] = useState(false);
   const [ageBand, setAgeBand] = useState("");
+  const [isAgendaForChange, setIsAgendaForChange] = useState("yes");
   const [afcPayRateId, setAFCPayRateId] = useState("");
+  const [fullTimeAnnualSalary, setFullTimeAnnualSalary] = useState("");
   const [contractedHours, setContractedHours] = useState("37.5");
+  const [wholeTimeHours, setWholeTimeHours] = useState("37.5");
   const [annualMileage, setAnnualMileage] = useState(6000);
   const [vehicleType, setVehicleType] = useState("");
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
@@ -525,20 +528,37 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   function validateNMW() {
     if (skipNMW) return "";
     if (!selectedNMWRate) return "Please choose your age range.";
-    if (!selectedAFCPayRate) return "Please choose your Agenda for Change annual salary.";
-    const hours = Number(contractedHours);
-    if (!Number.isFinite(hours) || hours <= 0 || hours > 80) return "Please enter contracted hours between 1 and 80.";
+    if (isAgendaForChange === "yes" && !selectedAFCPayRate) {
+      return "Please choose your Agenda for Change band and annual salary.";
+    }
+    const salary = isAgendaForChange === "yes"
+      ? Number(selectedAFCPayRate?.annualSalary)
+      : Number(fullTimeAnnualSalary);
+    if (!Number.isFinite(salary) || salary <= 0) return "Please enter a valid full-time annual salary.";
+    const contracted = Number(contractedHours);
+    if (!Number.isFinite(contracted) || contracted <= 0 || contracted > 80) {
+      return "Please enter contracted hours between 1 and 80.";
+    }
+    const wholeTime = Number(wholeTimeHours);
+    if (!Number.isFinite(wholeTime) || wholeTime <= 0 || wholeTime > 80) {
+      return "Please enter whole-time hours between 1 and 80.";
+    }
+    if (contracted > wholeTime) return "Contracted hours cannot be greater than whole-time hours.";
     return "";
   }
 
   function calculateNMWHourlyRate(salarySacrificeAnnual: number) {
-    if (skipNMW || !selectedNMWRate || !selectedAFCPayRate) {
+    const annualSalary = isAgendaForChange === "yes"
+      ? Number(selectedAFCPayRate?.annualSalary)
+      : Number(fullTimeAnnualSalary);
+    if (skipNMW || !selectedNMWRate || !Number.isFinite(annualSalary) || annualSalary <= 0) {
       return { skipped: true, blocked: false, hourlyRate: null, minimumRate: null };
     }
-    const hours = Number(contractedHours);
-    const annualFullTimeAfterSacrifice = Number(selectedAFCPayRate.annualSalary) - salarySacrificeAnnual;
-    const annualPartTimeEarnings = (annualFullTimeAfterSacrifice / 37.5) * hours;
-    const hourlyRate = annualPartTimeEarnings / 52.1428 / hours;
+    const contracted = Number(contractedHours);
+    const wholeTime = Number(wholeTimeHours);
+    const annualFullTimeAfterSacrifice = annualSalary - salarySacrificeAnnual;
+    const annualPartTimeEarnings = (annualFullTimeAfterSacrifice / wholeTime) * contracted;
+    const hourlyRate = annualPartTimeEarnings / 52.1428 / contracted;
     const minimumRate = Number(selectedNMWRate.hourlyRate);
     return {
       skipped: false,
@@ -780,14 +800,53 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                 </select>
               </div>
 
-              <div className="question-block">
-                <label htmlFor="afc-pay">Agenda for Change annual salary</label>
-                <select id="afc-pay" value={afcPayRateId} onChange={(event) => setAFCPayRateId(event.target.value)} required>
-                  {agendaForChangePayRates.map((rate) => (
-                    <option key={rate.afcPayRateId} value={rate.afcPayRateId}>{afcLabel(rate)}</option>
-                  ))}
-                </select>
-              </div>
+              <fieldset className="question-block">
+                <legend>Are you employed on Agenda for Change terms and conditions?</legend>
+                <label className="radio-row">
+                  <input
+                    type="radio"
+                    name="agenda-for-change"
+                    value="yes"
+                    checked={isAgendaForChange === "yes"}
+                    onChange={() => setIsAgendaForChange("yes")}
+                  />
+                  Yes
+                </label>
+                <label className="radio-row">
+                  <input
+                    type="radio"
+                    name="agenda-for-change"
+                    value="no"
+                    checked={isAgendaForChange === "no"}
+                    onChange={() => setIsAgendaForChange("no")}
+                  />
+                  No
+                </label>
+              </fieldset>
+
+              {isAgendaForChange === "yes" ? (
+                <div className="question-block">
+                  <label htmlFor="afc-pay">Agenda for Change band and annual salary</label>
+                  <select id="afc-pay" value={afcPayRateId} onChange={(event) => setAFCPayRateId(event.target.value)} required>
+                    {agendaForChangePayRates.map((rate) => (
+                      <option key={rate.afcPayRateId} value={rate.afcPayRateId}>{afcLabel(rate)}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="question-block">
+                  <label htmlFor="full-time-salary">Full-time annual salary</label>
+                  <input
+                    id="full-time-salary"
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={fullTimeAnnualSalary}
+                    onChange={(event) => setFullTimeAnnualSalary(event.target.value)}
+                    required
+                  />
+                </div>
+              )}
 
               <div className="question-block">
                 <label htmlFor="contracted-hours">Contracted hours per week</label>
@@ -799,6 +858,19 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                   step="0.01"
                   value={contractedHours}
                   onChange={(event) => setContractedHours(event.target.value)}
+                />
+              </div>
+
+              <div className="question-block">
+                <label htmlFor="whole-time-hours">Whole-time hours per week</label>
+                <input
+                  id="whole-time-hours"
+                  type="number"
+                  min="1"
+                  max="80"
+                  step="0.01"
+                  value={wholeTimeHours}
+                  onChange={(event) => setWholeTimeHours(event.target.value)}
                 />
               </div>
             </>
