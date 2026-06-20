@@ -974,7 +974,10 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                       <div><dt>Monthly salary sacrifice</dt><dd>{currency(result.salarySacrificeMonthly)}</dd></div>
                       <div><dt>Monthly cost</dt><dd>{currency(result.netMonthly)}</dd></div>
                       <div><dt>Annual rental figure</dt><dd>{currency(result.annualRental)}</dd></div>
-                      <div><dt>Company car tax</dt><dd>{currency(result.companyCarTaxAnnual / 12)} / month</dd></div>
+                      <div>
+                        <dt>Company car tax (included in above monthly net cost)</dt>
+                        <dd>{currency(result.companyCarTaxAnnual / 12)} / month</dd>
+                      </div>
                     </dl>
                     {result.nmwSkipped && (
                       <div className="notice">
