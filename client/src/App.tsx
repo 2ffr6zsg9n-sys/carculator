@@ -986,19 +986,17 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                 ) : (
                   <>
                     <div className="result-price">
-                      <span>Estimated net cost</span>
-                      <strong>{currency(result.netMonthly)}</strong>
-                      <small>per month</small>
-                    </div>
-                    <dl>
-                      <div><dt>Monthly salary sacrifice</dt><dd>{currency(result.salarySacrificeMonthly)}</dd></div>
-                      <div><dt>Monthly cost</dt><dd>{currency(result.netMonthly)}</dd></div>
-                      <div><dt>Annual rental figure</dt><dd>{currency(result.annualRental)}</dd></div>
                       <div>
-                        <dt>Company car tax (included in above monthly net cost)</dt>
-                        <dd>{currency(result.companyCarTaxAnnual / 12)} / month</dd>
+                        <span>Monthly salary sacrifice</span>
+                        <strong>{currency(result.salarySacrificeMonthly)}</strong>
+                        <small>per month</small>
                       </div>
-                    </dl>
+                      <div>
+                        <span>Estimated monthly cost</span>
+                        <strong>{currency(result.netMonthly)}</strong>
+                        <small>per month</small>
+                      </div>
+                    </div>
                     {result.nmwSkipped && (
                       <div className="notice">
                         Eligibility subject to National Minimum Wage check.
