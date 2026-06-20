@@ -306,9 +306,17 @@ function VehiclePicker({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Vehicle[]>([]);
   const [searching, setSearching] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    if ((query.trim().length < 2 && !vehicleType) || value) {
+    setPage(1);
+    setResults([]);
+  }, [query, vehicleType, annualMileage]);
+
+  useEffect(() => {
+    if (!listOpen || value) {
       setResults([]);
       return;
     }
@@ -316,7 +324,11 @@ function VehiclePicker({
     const timer = window.setTimeout(async () => {
       setSearching(true);
       try {
-        const params = new URLSearchParams({ search: query, limit: "8" });
+        const params = new URLSearchParams({
+          search: query.trim(),
+          limit: "100",
+          page: String(page)
+        });
         if (vehicleType) params.set("fuelType", vehicleType);
         params.set("annualMileage", String(annualMileage));
         const response = await fetch(`${API_BASE_URL}/vehicles?${params}`, {
@@ -325,7 +337,15 @@ function VehiclePicker({
         });
         if (response.ok) {
           const body = await response.json();
-          setResults(body.items.filter((vehicle: Vehicle) => !excludedIds.includes(vehicle.vehicleId)));
+          const available = body.items.filter((vehicle: Vehicle) => !excludedIds.includes(vehicle.vehicleId));
+          setResults((current) => {
+            const combined = page === 1 ? available : [...current, ...available];
+            return combined.filter(
+              (vehicle, vehicleIndex) =>
+                combined.findIndex((item) => item.vehicleId === vehicle.vehicleId) === vehicleIndex
+            );
+          });
+          setTotal(Number(body.total));
         }
       } finally {
         setSearching(false);
@@ -335,7 +355,7 @@ function VehiclePicker({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [query, value, vehicleType, annualMileage, excludedIds.join(",")]);
+  }, [query, value, vehicleType, annualMileage, excludedIds.join(","), listOpen, page]);
 
   return (
     <div className="vehicle-picker">
@@ -356,15 +376,26 @@ function VehiclePicker({
             id={`vehicle-${index}`}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            onFocus={() => {
-              if (vehicleType && !query) setQuery(" ");
-            }}
-            placeholder={vehicleType ? `Search ${vehicleType.toLowerCase()} vehicles` : "Type at least 2 letters to search"}
+            onFocus={() => setListOpen(true)}
+            placeholder={vehicleType ? `Search or browse ${vehicleType.toLowerCase()} vehicles` : "Search or browse all vehicles"}
             autoComplete="off"
           />
-          {searching && <span className="searching">Searching catalogue…</span>}
-          {results.length > 0 && (
-            <div className="search-results">
+          {listOpen && (
+            <div
+              className="search-results"
+              onScroll={(event) => {
+                const list = event.currentTarget;
+                const nearBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 80;
+                if (nearBottom && !searching && page * 100 < total) {
+                  setPage((current) => current + 1);
+                }
+              }}
+            >
+              <div className="search-results-summary">
+                {searching && results.length === 0
+                  ? "Loading vehicles…"
+                  : `${total.toLocaleString("en-GB")} vehicle${total === 1 ? "" : "s"} available`}
+              </div>
               {results.map((vehicle) => (
                 <button
                   type="button"
@@ -373,12 +404,19 @@ function VehiclePicker({
                     onChange(vehicle);
                     setQuery("");
                     setResults([]);
+                    setListOpen(false);
                   }}
                 >
                   <strong>{vehicle.vehicleName}</strong>
                   <span>{vehicle.fuelType} · £{vehicle.listPrice.toLocaleString("en-GB")}</span>
                 </button>
               ))}
+              {searching && results.length > 0 && (
+                <div className="search-results-summary">Loading more vehicles…</div>
+              )}
+              {!searching && results.length === 0 && (
+                <div className="search-results-summary">No matching vehicles found.</div>
+              )}
             </div>
           )}
         </>
