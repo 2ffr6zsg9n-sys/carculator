@@ -808,7 +808,10 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                     name="agenda-for-change"
                     value="yes"
                     checked={isAgendaForChange === "yes"}
-                    onChange={() => setIsAgendaForChange("yes")}
+                    onChange={() => {
+                      setIsAgendaForChange("yes");
+                      setWholeTimeHours("37.5");
+                    }}
                   />
                   Yes
                 </label>
@@ -835,7 +838,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                 </div>
               ) : (
                 <div className="question-block">
-                  <label htmlFor="full-time-salary">Full-time annual salary</label>
+                  <label htmlFor="full-time-salary">What is your full-time equivalent salary?</label>
                   <input
                     id="full-time-salary"
                     type="number"
@@ -849,7 +852,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
               )}
 
               <div className="question-block">
-                <label htmlFor="contracted-hours">Contracted hours per week</label>
+                <label htmlFor="contracted-hours">What are your weekly contracted hours/sessions?</label>
                 <input
                   id="contracted-hours"
                   type="number"
@@ -862,7 +865,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
               </div>
 
               <div className="question-block">
-                <label htmlFor="whole-time-hours">Whole-time hours per week</label>
+                <label htmlFor="whole-time-hours">What are your full-time equivalent weekly hours/sessions?</label>
                 <input
                   id="whole-time-hours"
                   type="number"
@@ -871,7 +874,11 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                   step="0.01"
                   value={wholeTimeHours}
                   onChange={(event) => setWholeTimeHours(event.target.value)}
+                  disabled={isAgendaForChange === "yes"}
                 />
+                {isAgendaForChange === "yes" && (
+                  <p className="form-hint">Agenda for Change whole-time hours are fixed at 37.5 hours per week.</p>
+                )}
               </div>
             </>
           )}
