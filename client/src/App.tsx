@@ -428,7 +428,7 @@ function VehiclePicker({
 }
 
 function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [incomeTaxRates, setIncomeTaxRates] = useState<IncomeTaxRate[]>([]);
   const [pensionRates, setPensionRates] = useState<PensionRate[]>([]);
@@ -453,7 +453,16 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [vehicleType, setVehicleType] = useState("");
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
   const [results, setResults] = useState<QuoteResult[]>([]);
-  const [optionalExtras, setOptionalExtras] = useState<Record<string, string>>({});
+  const [selectedOrderResult, setSelectedOrderResult] = useState<QuoteResult | null>(null);
+  const [orderForm, setOrderForm] = useState({
+    fullName: "",
+    emailAddress: "",
+    bodyColour: "",
+    interiorColour: "",
+    optionalExtras: "",
+    earliestDeliveryDate: "",
+    replacementRegistration: ""
+  });
   const [status, setStatus] = useState<{ type: "idle" | "loading" | "error"; message?: string }>({ type: "loading" });
 
   useEffect(() => {
@@ -571,12 +580,20 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     };
   }
 
-  function fleetEmailLink(result: QuoteResult) {
-    const extras = optionalExtras[result.vehicle.vehicleId] || "None specified";
+  function updateOrderForm(field: keyof typeof orderForm, value: string) {
+    setOrderForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function sendFleetEmail() {
+    if (!selectedOrderResult) return;
+    const result = selectedOrderResult;
+    const extras = orderForm.optionalExtras.trim() || "None specified";
     const nmwStatus = result.nmwSkipped
       ? "Eligibility subject to National Minimum Wage check"
       : "National Minimum Wage check completed in CARculator";
     const rows = [
+      ["Full name", orderForm.fullName],
+      ["Email address", orderForm.emailAddress],
       ["Vehicle", result.vehicle.vehicleName],
       ["Fuel type", result.vehicle.fuelType],
       ["Employer", selectedEmployer?.organisation ?? "Not selected"],
@@ -585,20 +602,22 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       ["BIK rate", `${percent(result.bikRate)} (${result.bikSource})`],
       ["Monthly salary sacrifice", currency(result.salarySacrificeMonthly)],
       ["Estimated monthly cost", currency(result.netMonthly)],
-      ["NMW status", nmwStatus]
+      ["NMW status", nmwStatus],
+      ["Body colour", orderForm.bodyColour],
+      ["Interior colour/trim", orderForm.interiorColour],
+      ["Optional extras", extras],
+      ["Earliest delivery date", orderForm.earliestDeliveryDate],
+      ["Registration number of old car if replacement lease vehicle", orderForm.replacementRegistration.trim() || "Not applicable"]
     ];
     const body = [
       "I am interested in ordering the following vehicle.",
       "",
       ...rows.map(([label, value]) => `${label}: ${value}`),
       "",
-      "Optional extras:",
-      extras,
-      "",
       "Please prepare a revised quote, including any optional extras, and advise on the next steps for ordering the vehicle."
     ].join("\n");
     const subject = `Lease car order request - ${result.vehicle.vehicleName}`;
-    return `mailto:${FLEET_MANAGEMENT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = `mailto:${FLEET_MANAGEMENT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
   function benefitRateForVehicle(vehicle: Vehicle) {
@@ -734,7 +753,8 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           [1, "1. Your details"],
           [2, "2. Minimum wage check"],
           [3, "3. Choose vehicles"],
-          [4, "4. Your quote"]
+          [4, "4. Your quote"],
+          [5, "5. Email Fleet"]
         ] as const).map(([targetStep, label]) => (
           targetStep < step ? (
             <button
@@ -1035,24 +1055,17 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                         Eligibility subject to National Minimum Wage check.
                       </div>
                     )}
-                    <div className="fleet-email-panel">
-                      <label htmlFor={`optional-extras-${result.vehicle.vehicleId}`}>Optional extras</label>
-                      <textarea
-                        id={`optional-extras-${result.vehicle.vehicleId}`}
-                        value={optionalExtras[result.vehicle.vehicleId] ?? ""}
-                        onChange={(event) => {
-                          const nextValue = event.target.value;
-                          setOptionalExtras((current) => ({
-                            ...current,
-                            [result.vehicle.vehicleId]: nextValue
-                          }));
-                        }}
-                        placeholder="Enter any optional extras you would like Fleet Management to include."
-                      />
-                      <a className="service-button email-button" href={fleetEmailLink(result)}>
-                        Send to Fleet Management
-                      </a>
-                    </div>
+                    <button
+                      className="service-button"
+                      type="button"
+                      onClick={() => {
+                        setSelectedOrderResult(result);
+                        setStatus({ type: "idle" });
+                        setStep(5);
+                      }}
+                    >
+                      Select Vehicle
+                    </button>
                   </>
                 )}
               </article>
@@ -1064,6 +1077,118 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             <button className="service-button" type="button" onClick={() => setStep(1)}>Start again</button>
           </div>
         </div>
+      )}
+
+      {step === 5 && selectedOrderResult && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            sendFleetEmail();
+          }}
+        >
+          <h2>Email Fleet Management</h2>
+          <p className="form-hint">
+            If you are interested in leasing this vehicle, please email this quote to Fleet Management.
+            They will send you a revised quote and include any of the following optional extras.
+          </p>
+
+          <div className="question-block">
+            <label htmlFor="order-full-name">Full name</label>
+            <input
+              id="order-full-name"
+              value={orderForm.fullName}
+              onChange={(event) => updateOrderForm("fullName", event.target.value)}
+              required
+            />
+          </div>
+
+          <div className="question-block">
+            <label htmlFor="order-email-address">Email address</label>
+            <input
+              id="order-email-address"
+              type="email"
+              value={orderForm.emailAddress}
+              onChange={(event) => updateOrderForm("emailAddress", event.target.value)}
+              required
+            />
+          </div>
+
+          <article className="quote-result order-quote-summary">
+            <div>
+              <h3>{selectedOrderResult.vehicle.vehicleName}</h3>
+              <p>
+                {selectedOrderResult.vehicle.fuelType} · List price {currency(selectedOrderResult.vehicle.listPrice)} · BIK {percent(selectedOrderResult.bikRate)} ({selectedOrderResult.bikSource})
+              </p>
+            </div>
+            <div className="result-price">
+              <div>
+                <span>Monthly salary sacrifice</span>
+                <strong>{currency(selectedOrderResult.salarySacrificeMonthly)}</strong>
+                <small>per month</small>
+              </div>
+              <div>
+                <span>Estimated monthly cost</span>
+                <strong>{currency(selectedOrderResult.netMonthly)}</strong>
+                <small>per month</small>
+              </div>
+            </div>
+          </article>
+
+          <div className="question-block">
+            <label htmlFor="body-colour">Body Colour</label>
+            <input
+              id="body-colour"
+              value={orderForm.bodyColour}
+              onChange={(event) => updateOrderForm("bodyColour", event.target.value)}
+              required
+            />
+          </div>
+
+          <div className="question-block">
+            <label htmlFor="interior-colour">Interior Colour/Trim</label>
+            <input
+              id="interior-colour"
+              value={orderForm.interiorColour}
+              onChange={(event) => updateOrderForm("interiorColour", event.target.value)}
+              required
+            />
+          </div>
+
+          <div className="question-block">
+            <label htmlFor="order-optional-extras">Optional Extras</label>
+            <textarea
+              id="order-optional-extras"
+              value={orderForm.optionalExtras}
+              onChange={(event) => updateOrderForm("optionalExtras", event.target.value)}
+              placeholder="Enter any optional extras you would like Fleet Management to include."
+            />
+          </div>
+
+          <div className="question-block">
+            <label htmlFor="earliest-delivery-date">Earliest delivery date</label>
+            <p className="form-hint">Please add a date or state delivery ASAP.</p>
+            <input
+              id="earliest-delivery-date"
+              value={orderForm.earliestDeliveryDate}
+              onChange={(event) => updateOrderForm("earliestDeliveryDate", event.target.value)}
+              required
+            />
+          </div>
+
+          <div className="question-block">
+            <label htmlFor="replacement-registration">State registration number of old car if replacement lease vehicle</label>
+            <input
+              id="replacement-registration"
+              value={orderForm.replacementRegistration}
+              onChange={(event) => updateOrderForm("replacementRegistration", event.target.value)}
+            />
+          </div>
+
+          <div className="button-row">
+            <button className="secondary-service-button" type="button" onClick={() => setStep(4)}>Back to quotes</button>
+            <button className="service-button large-email-button" type="submit">Email To Fleet Management</button>
+          </div>
+        </form>
       )}
     </section>
   );

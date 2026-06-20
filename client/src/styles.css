@@ -442,6 +442,14 @@ button:focus {
   display: inline-block;
   text-decoration: none;
 }
+.order-quote-summary {
+  margin-top: 28px;
+  max-width: 860px;
+}
+.large-email-button {
+  font-size: 22px;
+  padding: 16px 24px;
+}
 .admin-tabs {
   display: flex;
   gap: 8px;
