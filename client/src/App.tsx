@@ -1158,11 +1158,18 @@ export function App() {
           "x-quote-api-key": nextKey
         }
       });
-      if (!response.ok) throw new Error("The passcode is not correct.");
+      if (response.status === 401) throw new Error("The passcode is not correct.");
+      if (!response.ok) throw new Error("CARculator could not contact the quote service. Please try again.");
       window.sessionStorage.setItem("lease-car-quote-key", nextKey);
       setQuoteApiKey(nextKey);
     } catch (error) {
-      setQuoteAccessError(error instanceof Error ? error.message : "The passcode could not be checked.");
+      setQuoteAccessError(
+        error instanceof TypeError
+          ? "CARculator could not contact the quote service. Please refresh the page and try again."
+          : error instanceof Error
+            ? error.message
+            : "The passcode could not be checked."
+      );
     } finally {
       setCheckingQuoteAccess(false);
     }
