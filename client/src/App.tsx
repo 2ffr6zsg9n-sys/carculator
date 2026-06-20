@@ -118,6 +118,7 @@ type AdminTableConfig = {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ?? "https://1g0vserusc.execute-api.eu-west-2.amazonaws.com";
+const APP_BUILD = "2026-06-21-results-v2";
 
 function BrandHeader() {
   return (
@@ -133,7 +134,7 @@ function BrandHeader() {
 
 function CopyrightFooter() {
   return (
-    <footer className="site-footer">
+    <footer className="site-footer" data-build={APP_BUILD}>
       © {new Date().getFullYear()} South West Yorkshire Teaching Partnership NHS FT
     </footer>
   );
