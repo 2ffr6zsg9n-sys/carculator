@@ -37,6 +37,9 @@ type NIRate = {
   niLetter: string;
   employeeRateLower: number;
   employeeRateUpper: number;
+  employerRate: number;
+  class1ARate: number;
+  employerPensionRate: number;
   vatRate: number;
 };
 
@@ -428,7 +431,7 @@ function VehiclePicker({
 }
 
 function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [incomeTaxRates, setIncomeTaxRates] = useState<IncomeTaxRate[]>([]);
   const [pensionRates, setPensionRates] = useState<PensionRate[]>([]);
@@ -454,6 +457,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
   const [results, setResults] = useState<QuoteResult[]>([]);
   const [selectedOrderResult, setSelectedOrderResult] = useState<QuoteResult | null>(null);
+  const [selectedBreakdownResult, setSelectedBreakdownResult] = useState<QuoteResult | null>(null);
   const [orderForm, setOrderForm] = useState({
     fullName: "",
     emailAddress: "",
@@ -620,6 +624,48 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     window.location.href = `mailto:${FLEET_MANAGEMENT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
+  function quoteBreakdown(result: QuoteResult) {
+    const annualRental = Number(result.annualRental);
+    const insurance = Number(selectedEmployer?.insuranceFee ?? 0);
+    const adminFees = Number(selectedEmployer?.adminFee ?? 0);
+    const additionalContribution = 0;
+    const vat = (annualRental + insurance + adminFees + additionalContribution) * normaliseRate(selectedNI?.vatRate ?? 0);
+    const salarySacrifice = annualRental + insurance + adminFees + additionalContribution + vat;
+    const taxableBenefit = Number(result.vehicle.listPrice) * result.bikRate;
+    const savingsOnPaye = result.taxSavingAnnual;
+    const savingsOnNi = result.niSavingAnnual;
+    const savingsOnPension = result.pensionSavingAnnual;
+    const companyCarTax = result.companyCarTaxAnnual;
+    const costToDriver = result.netAnnual;
+    const ni1aCost = taxableBenefit * normaliseRate(selectedNI?.class1ARate ?? 0);
+    const employerNiSavings = salarySacrifice * normaliseRate(selectedNI?.employerRate ?? 0);
+    const employerPensionSavings = salarySacrifice * normaliseRate(selectedNI?.employerPensionRate ?? 0);
+    const viability = employerNiSavings + employerPensionSavings - ni1aCost;
+
+    return {
+      main: [
+        ["Annual Rental", annualRental],
+        ["Insurance", insurance],
+        ["Admin Fees", adminFees],
+        ["Additional Contribution", additionalContribution],
+        ["VAT", vat],
+        ["Salary Sacrifice", salarySacrifice, true],
+        ["Taxable Benefit", taxableBenefit],
+        ["Savings on PAYE", savingsOnPaye],
+        ["Savings on NI", savingsOnNi],
+        ["Savings on Pension", savingsOnPension],
+        ["Company Car Tax", companyCarTax],
+        ["Cost to Driver", costToDriver, true]
+      ] as const,
+      employer: [
+        ["NI 1A Cost", ni1aCost],
+        ["ERs NI Savings", employerNiSavings],
+        ["ERs Pension Savings", employerPensionSavings],
+        ["Viability", viability, true]
+      ] as const
+    };
+  }
+
   function benefitRateForVehicle(vehicle: Vehicle) {
     if (isElectricHybrid(vehicle)) {
       const range = Number(vehicle.electricRange ?? 0);
@@ -753,8 +799,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           [1, "1. Your details"],
           [2, "2. Minimum wage check"],
           [3, "3. Choose vehicles"],
-          [4, "4. Your quote"],
-          [5, "5. Email Fleet"]
+          [4, "4. Your quote"]
         ] as const).map(([targetStep, label]) => (
           targetStep < step ? (
             <button
@@ -1029,7 +1074,19 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             {results.map((result) => (
               <article className="quote-result" key={result.vehicle.vehicleId}>
                 <div>
-                  <h3>{result.vehicle.vehicleName}</h3>
+                  <h3>
+                    <button
+                      type="button"
+                      className="vehicle-title-button"
+                      onClick={() => {
+                        setSelectedBreakdownResult(result);
+                        setStatus({ type: "idle" });
+                        setStep(6);
+                      }}
+                    >
+                      {result.vehicle.vehicleName}
+                    </button>
+                  </h3>
                   <p>{result.vehicle.fuelType} · List price {currency(result.vehicle.listPrice)} · BIK {percent(result.bikRate)} ({result.bikSource})</p>
                 </div>
                 {result.nmwBlocked ? (
@@ -1189,6 +1246,59 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             <button className="service-button large-email-button" type="submit">Email To Fleet Management</button>
           </div>
         </form>
+      )}
+
+      {step === 6 && selectedBreakdownResult && (
+        <div>
+          <h2>Cost breakdown</h2>
+          <article className="quote-result order-quote-summary">
+            <div>
+              <h3>{selectedBreakdownResult.vehicle.vehicleName}</h3>
+              <p>
+                {selectedBreakdownResult.vehicle.fuelType} · List price {currency(selectedBreakdownResult.vehicle.listPrice)} · BIK {percent(selectedBreakdownResult.bikRate)} ({selectedBreakdownResult.bikSource})
+              </p>
+            </div>
+          </article>
+
+          <div className="breakdown-table-wrap">
+            <table className="breakdown-table">
+              <thead>
+                <tr>
+                  <th scope="col">Calculation</th>
+                  <th scope="col">Annual</th>
+                  <th scope="col">Monthly</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quoteBreakdown(selectedBreakdownResult).main.map(([label, amount, highlighted]) => (
+                  <tr key={label} className={highlighted ? "highlighted" : ""}>
+                    <th scope="row">{label}</th>
+                    <td>{currency(amount)}</td>
+                    <td>{currency(amount / 12)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="breakdown-table-wrap employer-breakdown">
+            <table className="breakdown-table">
+              <tbody>
+                {quoteBreakdown(selectedBreakdownResult).employer.map(([label, amount, highlighted]) => (
+                  <tr key={label} className={highlighted ? "highlighted" : ""}>
+                    <th scope="row">{label}</th>
+                    <td>{currency(amount)}</td>
+                    <td>{currency(amount / 12)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="button-row">
+            <button className="secondary-service-button" type="button" onClick={() => setStep(4)}>Back to quotes</button>
+          </div>
+        </div>
       )}
     </section>
   );

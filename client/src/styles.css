@@ -397,6 +397,20 @@ button:focus {
   padding: 22px;
   background: #fff;
 }
+.vehicle-title-button {
+  border: 0;
+  background: transparent;
+  color: #0b0c0c;
+  cursor: pointer;
+  font: inherit;
+  font-weight: inherit;
+  text-align: left;
+  padding: 0;
+  text-decoration: none;
+}
+.vehicle-title-button:hover {
+  color: #0b0c0c;
+}
 .quote-result > p,
 .quote-result p {
   color: var(--text-muted);
@@ -449,6 +463,47 @@ button:focus {
 .large-email-button {
   font-size: 22px;
   padding: 16px 24px;
+}
+.breakdown-table-wrap {
+  max-width: 760px;
+  margin-top: 24px;
+  overflow-x: auto;
+}
+.employer-breakdown {
+  border: 1px solid var(--border);
+  padding: 10px;
+}
+.breakdown-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+.breakdown-table th,
+.breakdown-table td {
+  padding: 8px 10px;
+  text-align: right;
+}
+.breakdown-table th:first-child {
+  width: 40%;
+  color: var(--text-muted);
+  text-align: left;
+}
+.breakdown-table thead th {
+  color: var(--text-muted);
+  font-weight: 700;
+  text-decoration: underline;
+}
+.breakdown-table td {
+  min-width: 150px;
+  border: 2px solid #d8dde0;
+  background: #fff;
+}
+.breakdown-table tr.highlighted th,
+.breakdown-table tr.highlighted td {
+  font-weight: 700;
+}
+.breakdown-table tr.highlighted td {
+  background: #f3f2f1;
 }
 .admin-tabs {
   display: flex;
