@@ -416,6 +416,10 @@ button:focus {
   color: var(--text-muted);
   margin-top: 0;
 }
+.quote-reference {
+  color: #0b0c0c !important;
+  font-weight: 700;
+}
 .result-price {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

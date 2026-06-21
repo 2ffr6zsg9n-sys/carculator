@@ -83,6 +83,8 @@ type VehicleRentalRate = {
 };
 
 type QuoteResult = {
+  quoteReference?: number;
+  quoteCreatedAt?: string;
   vehicle: Vehicle;
   annualRental: number;
   salarySacrificeAnnual: number;
@@ -99,6 +101,55 @@ type QuoteResult = {
   nmwBlocked: boolean;
   nmwHourlyRate: number | null;
   nmwMinimumRate: number | null;
+};
+
+type StoredQuoteSummary = {
+  quoteReference: number;
+  createdAt: string;
+  clientIpAddress: string | null;
+  deviceType: string | null;
+  browserName: string | null;
+  employer: string | null;
+  vehicleName: string;
+  fuelType: string | null;
+  annualMileage: number;
+  salarySacrificeMonthly: number;
+  costToDriverMonthly: number;
+  nmwBlocked: boolean;
+  nmwSkipped: boolean;
+};
+
+type StoredQuoteDetail = StoredQuoteSummary & {
+  userAgent: string | null;
+  vehicleId: number;
+  listPrice: number;
+  co2Emissions: number | null;
+  electricRange: number | null;
+  bikRate: number;
+  bikSource: string | null;
+  annualRental: number;
+  insurance: number;
+  adminFees: number;
+  vat: number;
+  salarySacrificeAnnual: number;
+  taxableBenefit: number;
+  savingsOnPaye: number;
+  savingsOnNi: number;
+  savingsOnPension: number;
+  companyCarTax: number;
+  costToDriverAnnual: number;
+  ni1aCost: number;
+  employerNiSavings: number;
+  employerPensionSavings: number;
+  totalEmployerSavings: number;
+  nmwHourlyRate: number | null;
+  nmwMinimumRate: number | null;
+  nmwSalaryUsed: number | null;
+  nmwRevisedFullTimeSalary: number | null;
+  nmwWholeTimeHours: number | null;
+  nmwContractedHours: number | null;
+  nmwAdjustedAnnualEarnings: number | null;
+  nmwResult: string | null;
 };
 
 type AdminField = {
@@ -596,6 +647,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       ? "Eligibility subject to National Minimum Wage check"
       : "National Minimum Wage check completed in CARculator";
     const rows = [
+      ["Quote reference", result.quoteReference ? String(result.quoteReference) : "Not available"],
       ["Full name", orderForm.fullName],
       ["Email address", orderForm.emailAddress],
       ["Vehicle", result.vehicle.vehicleName],
@@ -696,6 +748,71 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     };
   }
 
+  function quoteStoragePayload(result: QuoteResult) {
+    const annualRental = Number(result.annualRental);
+    const insurance = Number(selectedEmployer?.insuranceFee ?? 0);
+    const adminFees = Number(selectedEmployer?.adminFee ?? 0);
+    const vat = (annualRental + insurance + adminFees) * normaliseRate(selectedNI?.vatRate ?? 0);
+    const salarySacrifice = annualRental + insurance + adminFees + vat;
+    const taxableBenefit = Number(result.vehicle.listPrice) * result.bikRate;
+    const ni1aCost = taxableBenefit * normaliseRate(selectedNI?.class1ARate ?? 0);
+    const employerNiSavings = salarySacrifice * normaliseRate(selectedNI?.employerRate ?? 0);
+    const employerPensionSavings = salarySacrifice * normaliseRate(selectedNI?.employerPensionRate ?? 0);
+    const totalEmployerSavings = employerNiSavings + employerPensionSavings - ni1aCost;
+    const nmw = nmwBreakdown(result);
+    const annualSalary = result.nmwSkipped
+      ? null
+      : isAgendaForChange === "yes"
+        ? Number(selectedAFCPayRate?.annualSalary)
+        : Number(fullTimeAnnualSalary);
+    const contracted = result.nmwSkipped ? null : Number(contractedHours);
+    const wholeTime = result.nmwSkipped ? null : Number(wholeTimeHours);
+    const revisedFullTimeSalary = annualSalary === null ? null : annualSalary - result.salarySacrificeAnnual;
+    const adjustedAnnualEarnings = revisedFullTimeSalary === null || contracted === null || wholeTime === null
+      ? null
+      : (revisedFullTimeSalary / wholeTime) * contracted;
+
+    return {
+      employer: selectedEmployer?.organisation ?? null,
+      annualMileage,
+      vehicleId: Number(result.vehicle.vehicleId),
+      vehicleName: result.vehicle.vehicleName,
+      fuelType: result.vehicle.fuelType,
+      listPrice: Number(result.vehicle.listPrice),
+      co2Emissions: result.vehicle.co2Emissions,
+      electricRange: result.vehicle.electricRange,
+      bikRate: result.bikRate,
+      bikSource: result.bikSource,
+      annualRental,
+      insurance,
+      adminFees,
+      vat,
+      salarySacrificeAnnual: result.salarySacrificeAnnual,
+      salarySacrificeMonthly: result.salarySacrificeMonthly,
+      taxableBenefit,
+      savingsOnPaye: result.taxSavingAnnual,
+      savingsOnNi: result.niSavingAnnual,
+      savingsOnPension: result.pensionSavingAnnual,
+      companyCarTax: result.companyCarTaxAnnual,
+      costToDriverAnnual: result.netAnnual,
+      costToDriverMonthly: result.netMonthly,
+      ni1aCost,
+      employerNiSavings,
+      employerPensionSavings,
+      totalEmployerSavings,
+      nmwSkipped: result.nmwSkipped,
+      nmwBlocked: result.nmwBlocked,
+      nmwHourlyRate: result.nmwHourlyRate,
+      nmwMinimumRate: result.nmwMinimumRate,
+      nmwSalaryUsed: annualSalary,
+      nmwRevisedFullTimeSalary: revisedFullTimeSalary,
+      nmwWholeTimeHours: wholeTime,
+      nmwContractedHours: contracted,
+      nmwAdjustedAnnualEarnings: adjustedAnnualEarnings,
+      nmwResult: String(nmw.rows.find(([label]) => label === "Result")?.[1] ?? (result.nmwSkipped ? "Skipped" : ""))
+    };
+  }
+
   function benefitRateForVehicle(vehicle: Vehicle) {
     if (isElectricHybrid(vehicle)) {
       const range = Number(vehicle.electricRange ?? 0);
@@ -786,7 +903,31 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         };
       });
 
-      setResults(nextResults);
+      const saveResponse = await fetch(`${API_BASE_URL}/quotes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-quote-api-key": quoteApiKey
+        },
+        body: JSON.stringify({
+          quotes: nextResults.map((result) => quoteStoragePayload(result))
+        })
+      });
+      const saveBody = await saveResponse.json();
+      if (!saveResponse.ok) {
+        throw new Error(saveBody.error ?? "The quotes could not be stored.");
+      }
+      const savedQuotes = saveBody.items as Array<{ quoteReference: number; createdAt: string; vehicleId: number }>;
+      const resultsWithReferences = nextResults.map((result) => {
+        const savedQuote = savedQuotes.find((quote) => String(quote.vehicleId) === String(result.vehicle.vehicleId));
+        return {
+          ...result,
+          quoteReference: savedQuote?.quoteReference,
+          quoteCreatedAt: savedQuote?.createdAt
+        };
+      });
+
+      setResults(resultsWithReferences);
       setStatus({ type: "idle" });
       setStep(4);
     } catch (error) {
@@ -1118,6 +1259,9 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                       {result.vehicle.vehicleName}
                     </button>
                   </h3>
+                  {result.quoteReference && (
+                    <p className="quote-reference">Quote reference: {result.quoteReference}</p>
+                  )}
                   <p>{result.vehicle.fuelType} · List price {currency(result.vehicle.listPrice)} · BIK {percent(result.bikRate)} ({result.bikSource})</p>
                 </div>
                 {result.nmwBlocked ? (
@@ -1204,6 +1348,9 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <article className="quote-result order-quote-summary">
             <div>
               <h3>{selectedOrderResult.vehicle.vehicleName}</h3>
+              {selectedOrderResult.quoteReference && (
+                <p className="quote-reference">Quote reference: {selectedOrderResult.quoteReference}</p>
+              )}
               <p>
                 {selectedOrderResult.vehicle.fuelType} · List price {currency(selectedOrderResult.vehicle.listPrice)} · BIK {percent(selectedOrderResult.bikRate)} ({selectedOrderResult.bikSource})
               </p>
@@ -1285,6 +1432,9 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <article className="quote-result order-quote-summary">
             <div>
               <h3>{selectedBreakdownResult.vehicle.vehicleName}</h3>
+              {selectedBreakdownResult.quoteReference && (
+                <p className="quote-reference">Quote reference: {selectedBreakdownResult.quoteReference}</p>
+              )}
               <p>
                 {selectedBreakdownResult.vehicle.fuelType} · List price {currency(selectedBreakdownResult.vehicle.listPrice)} · BIK {percent(selectedBreakdownResult.bikRate)} ({selectedBreakdownResult.bikSource})
               </p>
@@ -1407,6 +1557,13 @@ function AdminPage() {
         </button>
       </div>
       <div className="admin-tabs" role="tablist" aria-label="Admin tables">
+        <button
+          type="button"
+          className={selectedSlug === "stored-quotes" ? "active" : ""}
+          onClick={() => setSelectedSlug("stored-quotes")}
+        >
+          Stored Quotes
+        </button>
         {adminTables.map((table) => (
           <button
             key={table.slug}
@@ -1418,8 +1575,243 @@ function AdminPage() {
           </button>
         ))}
       </div>
-      <AdminTable key={selectedTable.slug} config={selectedTable} apiKey={apiKey} />
+      {selectedSlug === "stored-quotes" ? (
+        <AdminQuotes apiKey={apiKey} />
+      ) : (
+        <AdminTable key={selectedTable.slug} config={selectedTable} apiKey={apiKey} />
+      )}
     </section>
+  );
+}
+
+function storedQuoteMainRows(quote: StoredQuoteDetail) {
+  return [
+    ["Annual Rental", quote.annualRental],
+    ["Insurance", quote.insurance],
+    ["Admin Fees", quote.adminFees],
+    ["VAT", quote.vat],
+    ["Salary Sacrifice", quote.salarySacrificeAnnual, true],
+    ["Taxable Benefit", quote.taxableBenefit],
+    ["Savings on PAYE", quote.savingsOnPaye],
+    ["Savings on NI", quote.savingsOnNi],
+    ["Savings on Pension", quote.savingsOnPension],
+    ["Company Car Tax", quote.companyCarTax],
+    ["Cost to Driver", quote.costToDriverAnnual, true]
+  ] as const;
+}
+
+function storedQuoteEmployerRows(quote: StoredQuoteDetail) {
+  return [
+    ["NI 1A Cost", quote.ni1aCost],
+    ["ERs NI Savings", quote.employerNiSavings],
+    ["ERs Pension Savings", quote.employerPensionSavings],
+    ["Total Employer Savings", quote.totalEmployerSavings, true]
+  ] as const;
+}
+
+function storedQuoteNMWRows(quote: StoredQuoteDetail) {
+  if (quote.nmwSkipped) return [["Status", "Eligibility subject to National Minimum Wage check"]] as const;
+  return [
+    ["Salary used", quote.nmwSalaryUsed === null ? "Not stored" : currency(quote.nmwSalaryUsed)],
+    ["Less annual salary sacrifice", currency(quote.salarySacrificeAnnual)],
+    ["Revised full-time equivalent salary", quote.nmwRevisedFullTimeSalary === null ? "Not stored" : currency(quote.nmwRevisedFullTimeSalary)],
+    ["Full-time equivalent weekly hours/sessions", quote.nmwWholeTimeHours === null ? "Not stored" : quote.nmwWholeTimeHours.toLocaleString("en-GB")],
+    ["Weekly contracted hours/sessions", quote.nmwContractedHours === null ? "Not stored" : quote.nmwContractedHours.toLocaleString("en-GB")],
+    ["Adjusted annual earnings for contracted hours", quote.nmwAdjustedAnnualEarnings === null ? "Not stored" : currency(quote.nmwAdjustedAnnualEarnings)],
+    ["Calculated hourly rate", quote.nmwHourlyRate === null ? "Not stored" : currency(quote.nmwHourlyRate)],
+    ["National Minimum Wage rate", quote.nmwMinimumRate === null ? "Not stored" : currency(quote.nmwMinimumRate)],
+    ["Result", quote.nmwResult ?? "Not stored"]
+  ] as const;
+}
+
+function storedQuoteAccessRows(quote: StoredQuoteDetail) {
+  return [
+    ["IP address", quote.clientIpAddress ?? "Not stored"],
+    ["Device", quote.deviceType ?? "Not stored"],
+    ["Browser", quote.browserName ?? "Not stored"],
+    ["Browser details", quote.userAgent ?? "Not stored"]
+  ] as const;
+}
+
+function AdminQuotes({ apiKey }: { apiKey: string }) {
+  const [quotes, setQuotes] = useState<StoredQuoteSummary[]>([]);
+  const [selectedQuote, setSelectedQuote] = useState<StoredQuoteDetail | null>(null);
+  const [status, setStatus] = useState<{ type: "loading" | "idle" | "success" | "error"; message?: string }>({ type: "loading" });
+
+  async function loadQuotes() {
+    setStatus({ type: "loading" });
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/quotes`, {
+        headers: { "x-admin-api-key": apiKey }
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Could not load stored quotes");
+      setQuotes(body.items);
+      setStatus({ type: "idle" });
+    } catch (error) {
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not load stored quotes" });
+    }
+  }
+
+  async function viewQuote(quoteReference: number) {
+    setStatus({ type: "loading" });
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/quotes/${quoteReference}`, {
+        headers: { "x-admin-api-key": apiKey }
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Could not load quote details");
+      setSelectedQuote(body.item);
+      setStatus({ type: "idle" });
+    } catch (error) {
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not load quote details" });
+    }
+  }
+
+  async function deleteQuote(quoteReference: number) {
+    if (!window.confirm(`Delete quote reference ${quoteReference}?`)) return;
+    setStatus({ type: "loading" });
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/quotes/${quoteReference}`, {
+        method: "DELETE",
+        headers: { "x-admin-api-key": apiKey }
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Could not delete quote");
+      setSelectedQuote(null);
+      await loadQuotes();
+      setStatus({ type: "success", message: "Quote deleted." });
+    } catch (error) {
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not delete quote" });
+    }
+  }
+
+  useEffect(() => {
+    void loadQuotes();
+  }, [apiKey]);
+
+  if (selectedQuote) {
+    return (
+      <div>
+        <div className="admin-header">
+          <div>
+            <h2>Quote reference {selectedQuote.quoteReference}</h2>
+            <p>{selectedQuote.vehicleName} · {selectedQuote.employer ?? "No employer stored"} · {new Date(selectedQuote.createdAt).toLocaleString("en-GB")}</p>
+          </div>
+          <button className="secondary-button" type="button" onClick={() => setSelectedQuote(null)}>Back to quote list</button>
+        </div>
+
+        <div className="breakdown-table-wrap">
+          <table className="breakdown-table">
+            <thead>
+              <tr><th>Calculation</th><th>Annual</th><th>Monthly</th></tr>
+            </thead>
+            <tbody>
+              {storedQuoteMainRows(selectedQuote).map(([label, amount, highlighted]) => (
+                <tr key={label} className={highlighted ? "highlighted" : ""}>
+                  <th scope="row">{label}</th>
+                  <td>{currency(amount)}</td>
+                  <td>{currency(amount / 12)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="breakdown-table-wrap employer-breakdown">
+          <table className="breakdown-table">
+            <tbody>
+              {storedQuoteEmployerRows(selectedQuote).map(([label, amount, highlighted]) => (
+                <tr key={label} className={highlighted ? "highlighted" : ""}>
+                  <th scope="row">{label}</th>
+                  <td>{currency(amount)}</td>
+                  <td>{currency(amount / 12)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="nmw-breakdown">
+          <h3>National Minimum Wage calculation</h3>
+          <table className="nmw-breakdown-table">
+            <tbody>
+              {storedQuoteNMWRows(selectedQuote).map(([label, value]) => (
+                <tr key={label}><th scope="row">{label}</th><td>{value}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="nmw-breakdown">
+          <h3>Access details</h3>
+          <table className="nmw-breakdown-table">
+            <tbody>
+              {storedQuoteAccessRows(selectedQuote).map(([label, value]) => (
+                <tr key={label}><th scope="row">{label}</th><td>{value}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="admin-header">
+        <div>
+          <h2>Stored Quotes</h2>
+          <p>Quotes calculated in CARculator. Employee names and email addresses are not stored.</p>
+        </div>
+        <button className="secondary-button" type="button" onClick={() => void loadQuotes()}>Refresh</button>
+      </div>
+      {status.type === "error" && <div className="message error">{status.message}</div>}
+      {status.type === "success" && <div className="message success">{status.message}</div>}
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Quote ref</th>
+              <th>Created</th>
+              <th>Employer</th>
+              <th>Vehicle</th>
+              <th>Device</th>
+              <th>Browser</th>
+              <th>IP address</th>
+              <th>Monthly sacrifice</th>
+              <th>Monthly cost</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {quotes.map((quote) => (
+              <tr key={quote.quoteReference}>
+                <td>{quote.quoteReference}</td>
+                <td>{new Date(quote.createdAt).toLocaleString("en-GB")}</td>
+                <td>{quote.employer ?? "—"}</td>
+                <td>{quote.vehicleName}</td>
+                <td>{quote.deviceType ?? "—"}</td>
+                <td>{quote.browserName ?? "—"}</td>
+                <td>{quote.clientIpAddress ?? "—"}</td>
+                <td>{currency(quote.salarySacrificeMonthly)}</td>
+                <td>{currency(quote.costToDriverMonthly)}</td>
+                <td>
+                  <div className="table-actions">
+                    <button type="button" className="small-button" onClick={() => void viewQuote(quote.quoteReference)}>View details</button>
+                    <button type="button" className="text-button" onClick={() => void deleteQuote(quote.quoteReference)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {quotes.length === 0 && status.type !== "loading" && (
+              <tr><td colSpan={10}>No stored quotes yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {status.type === "loading" && <p className="loading-note">Loading…</p>}
+    </div>
   );
 }
 
