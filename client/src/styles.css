@@ -584,6 +584,27 @@ button:focus {
   flex: 1 1 320px;
   min-width: 220px;
 }
+.admin-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.admin-pagination p {
+  margin: 0;
+  color: var(--text-muted);
+}
+.admin-pagination div {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.admin-pagination .secondary-button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
 .admin-page-heading {
   margin-bottom: 28px;
 }

@@ -1671,19 +1671,33 @@ function storedQuoteAccessRows(quote: StoredQuoteDetail) {
   ] as const;
 }
 
+function storedQuoteVehicleRows(quote: StoredQuoteDetail) {
+  return [
+    ["Vehicle ID", quote.vehicleId.toString()],
+    ["Vehicle name", quote.vehicleName],
+    ["Fuel type", quote.fuelType ?? "Not stored"],
+    ["List price", currency(quote.listPrice)],
+    ["CO2 rate", quote.co2Emissions === null ? "Not stored" : `${quote.co2Emissions.toLocaleString("en-GB")}g/km`],
+    ["Electric range", quote.electricRange === null ? "Not stored" : `${quote.electricRange.toLocaleString("en-GB")} miles`],
+    ["BIK percentage", `${percent(quote.bikRate)}${quote.bikSource ? ` (${quote.bikSource})` : ""}`]
+  ] as const;
+}
+
 function AdminVehicles({ apiKey }: { apiKey: string }) {
   const [vehicles, setVehicles] = useState<AdminVehicle[]>([]);
   const [searchText, setSearchText] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [selectedVehicle, setSelectedVehicle] = useState<AdminVehicle | null>(null);
   const [rentals, setRentals] = useState<VehicleRentalRate[]>([]);
   const [status, setStatus] = useState<{ type: "loading" | "idle" | "success" | "error"; message?: string }>({ type: "loading" });
+  const pageSize = 50;
 
-  async function loadVehicles(search = activeSearch) {
+  async function loadVehicles(search = activeSearch, nextPage = page) {
     setStatus({ type: "loading" });
     try {
-      const params = new URLSearchParams({ limit: "100" });
+      const params = new URLSearchParams({ limit: String(pageSize), page: String(nextPage) });
       if (search.trim()) params.set("search", search.trim());
       const response = await fetch(`${API_BASE_URL}/admin/vehicles?${params}`, {
         headers: { "x-admin-api-key": apiKey }
@@ -1692,6 +1706,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
       if (!response.ok) throw new Error(body.error ?? "Could not load vehicles");
       setVehicles(body.items);
       setTotal(body.total);
+      setPage(nextPage);
       setStatus({ type: "idle" });
     } catch (error) {
       setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not load vehicles" });
@@ -1731,7 +1746,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
         setSelectedVehicle(null);
         setRentals([]);
       }
-      await loadVehicles();
+      await loadVehicles(activeSearch, page);
       setStatus({ type: "success", message: `Vehicle deleted. ${body.deletedRentals ?? 0} rental records were also removed.` });
     } catch (error) {
       setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not delete vehicle" });
@@ -1739,7 +1754,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
   }
 
   useEffect(() => {
-    void loadVehicles("");
+    void loadVehicles("", 1);
   }, [apiKey]);
 
   if (selectedVehicle) {
@@ -1803,7 +1818,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
           <h2>Vehicles</h2>
           <p>Search the vehicle table, view annual rentals, or delete vehicles from CARculator.</p>
         </div>
-        <button type="button" className="secondary-button" onClick={() => void loadVehicles()}>
+        <button type="button" className="secondary-button" onClick={() => void loadVehicles(activeSearch, page)}>
           Refresh
         </button>
       </div>
@@ -1814,7 +1829,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
           event.preventDefault();
           const nextSearch = searchText.trim();
           setActiveSearch(nextSearch);
-          void loadVehicles(nextSearch);
+          void loadVehicles(nextSearch, 1);
         }}
       >
         <label htmlFor="admin-vehicle-search">Search/filter vehicle</label>
@@ -1832,7 +1847,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
             onClick={() => {
               setSearchText("");
               setActiveSearch("");
-              void loadVehicles("");
+              void loadVehicles("", 1);
             }}
           >
             Clear
@@ -1843,9 +1858,31 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
       {status.type === "error" && <div className="message error">{status.message}</div>}
       {status.type === "success" && <div className="message success">{status.message}</div>}
 
-      <p className="loading-note">
-        Showing {vehicles.length.toLocaleString("en-GB")} of {total.toLocaleString("en-GB")} vehicles{activeSearch ? ` matching “${activeSearch}”` : ""}.
-      </p>
+      <div className="admin-pagination">
+        <p>
+          Showing {total === 0 ? 0 : ((page - 1) * pageSize + 1).toLocaleString("en-GB")}
+          {" "}to {Math.min(page * pageSize, total).toLocaleString("en-GB")}
+          {" "}of {total.toLocaleString("en-GB")} vehicles{activeSearch ? ` matching “${activeSearch}”` : ""}.
+        </p>
+        <div>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={page <= 1 || status.type === "loading"}
+            onClick={() => void loadVehicles(activeSearch, page - 1)}
+          >
+            Previous 50
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={page * pageSize >= total || status.type === "loading"}
+            onClick={() => void loadVehicles(activeSearch, page + 1)}
+          >
+            Next 50
+          </button>
+        </div>
+      </div>
 
       <div className="admin-table-wrap">
         <table className="admin-table admin-vehicles-table">
@@ -2034,6 +2071,17 @@ function AdminQuotes({ apiKey }: { apiKey: string }) {
             <p>{selectedQuote.vehicleName} · {selectedQuote.employer ?? "No employer stored"} · {new Date(selectedQuote.createdAt).toLocaleString("en-GB")}</p>
           </div>
           <button className="secondary-button" type="button" onClick={() => setSelectedQuote(null)}>Back to quote list</button>
+        </div>
+
+        <div className="nmw-breakdown">
+          <h3>Vehicle details</h3>
+          <table className="nmw-breakdown-table">
+            <tbody>
+              {storedQuoteVehicleRows(selectedQuote).map(([label, value]) => (
+                <tr key={label}><th scope="row">{label}</th><td>{value}</td></tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <div className="breakdown-table-wrap">
