@@ -1267,7 +1267,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             These estimates use the cheapest available rental for each selected vehicle at {annualMileage.toLocaleString("en-GB")} miles per year.
           </p>
           <button className="service-button no-print" type="button" onClick={() => window.print()}>
-            Save or print this quote
+            Save as PDF / Print
           </button>
 
           <div className="result-list">
@@ -1334,6 +1334,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
           <div className="button-row">
             <button className="secondary-service-button" type="button" onClick={() => setStep(3)}>Back to vehicles</button>
+            <button className="service-button no-print" type="button" onClick={() => window.print()}>Save as PDF / Print</button>
             <button className="service-button" type="button" onClick={() => setStep(1)}>Start again</button>
           </div>
         </div>
