@@ -704,3 +704,36 @@ button:focus {
   .brand-header { align-items: flex-start; }
   .brand-subtitle { max-width: 190px; }
 }
+
+@media print {
+  body {
+    background: #fff;
+  }
+  body::before,
+  .intro,
+  .progress-steps,
+  .button-row,
+  .no-print,
+  .site-footer {
+    display: none !important;
+  }
+  main {
+    display: block;
+    width: 100%;
+    padding: 0;
+  }
+  .service-panel {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+  .quote-result {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 24px;
+  }
+  .result-price {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
