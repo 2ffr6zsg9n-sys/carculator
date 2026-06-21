@@ -259,6 +259,25 @@ button:focus {
   background: #005a30;
 }
 .service-button:disabled { opacity: .65; cursor: wait; }
+.admin-card .service-button,
+.admin-card .submit-button,
+.admin-card .small-button,
+.admin-card .secondary-button {
+  background: var(--nhs-blue);
+  box-shadow: 0 3px 0 var(--nhs-dark-blue);
+}
+.admin-card .service-button:hover,
+.admin-card .submit-button:hover,
+.admin-card .small-button:hover,
+.admin-card .secondary-button:hover {
+  background: var(--nhs-dark-blue);
+}
+.admin-card .service-button:disabled,
+.admin-card .submit-button:disabled,
+.admin-card .small-button:disabled,
+.admin-card .secondary-button:disabled {
+  background: var(--nhs-blue);
+}
 .secondary-service-button {
   border: 2px solid var(--nhs-blue);
   background: #fff;

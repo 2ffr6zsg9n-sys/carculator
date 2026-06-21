@@ -54,7 +54,6 @@ type NationalMinimumWageRate = {
 type AgendaForChangePayRate = {
   afcPayRateId: number;
   band: string;
-  payStep: string;
   annualSalary: number;
   effectiveFrom: string;
   displayOrder: number;
@@ -319,12 +318,11 @@ const adminTables: AdminTableConfig[] = [
     idKey: "afcPayRateId",
     fields: [
       { key: "band", label: "Band" },
-      { key: "payStep", label: "Pay step" },
       { key: "annualSalary", label: "Annual salary", type: "number", step: "0.01" },
       { key: "effectiveFrom", label: "Effective from" },
       { key: "displayOrder", label: "Display order", type: "number", step: "1" }
     ],
-    emptyRow: { band: "", payStep: "", annualSalary: 0, effectiveFrom: "2025-04-01", displayOrder: 0 }
+    emptyRow: { band: "", annualSalary: 0, effectiveFrom: "2026-04-01", displayOrder: 0 }
   }
 ];
 
