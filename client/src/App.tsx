@@ -80,6 +80,13 @@ type VehicleRentalRate = {
   annualMileage: number;
   providerCode: string;
   annualRental: number;
+  effectiveAt?: string;
+  externalQuoteReference?: string | null;
+};
+
+type AdminVehicle = Omit<Vehicle, "vehicleId"> & {
+  vehicleId: number;
+  rentalCount: number;
 };
 
 type QuoteResult = {
@@ -1577,6 +1584,20 @@ function AdminPage() {
         >
           Stored Quotes
         </button>
+        <button
+          type="button"
+          className={selectedSlug === "vehicles" ? "active" : ""}
+          onClick={() => setSelectedSlug("vehicles")}
+        >
+          Vehicles
+        </button>
+        <button
+          type="button"
+          className={selectedSlug === "settings" ? "active" : ""}
+          onClick={() => setSelectedSlug("settings")}
+        >
+          Settings
+        </button>
         {adminTables.map((table) => (
           <button
             key={table.slug}
@@ -1590,6 +1611,10 @@ function AdminPage() {
       </div>
       {selectedSlug === "stored-quotes" ? (
         <AdminQuotes apiKey={apiKey} />
+      ) : selectedSlug === "vehicles" ? (
+        <AdminVehicles apiKey={apiKey} />
+      ) : selectedSlug === "settings" ? (
+        <AdminSettings apiKey={apiKey} />
       ) : (
         <AdminTable key={selectedTable.slug} config={selectedTable} apiKey={apiKey} />
       )}
@@ -1644,6 +1669,303 @@ function storedQuoteAccessRows(quote: StoredQuoteDetail) {
     ["Browser", quote.browserName ?? "Not stored"],
     ["Browser details", quote.userAgent ?? "Not stored"]
   ] as const;
+}
+
+function AdminVehicles({ apiKey }: { apiKey: string }) {
+  const [vehicles, setVehicles] = useState<AdminVehicle[]>([]);
+  const [searchText, setSearchText] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  const [total, setTotal] = useState(0);
+  const [selectedVehicle, setSelectedVehicle] = useState<AdminVehicle | null>(null);
+  const [rentals, setRentals] = useState<VehicleRentalRate[]>([]);
+  const [status, setStatus] = useState<{ type: "loading" | "idle" | "success" | "error"; message?: string }>({ type: "loading" });
+
+  async function loadVehicles(search = activeSearch) {
+    setStatus({ type: "loading" });
+    try {
+      const params = new URLSearchParams({ limit: "100" });
+      if (search.trim()) params.set("search", search.trim());
+      const response = await fetch(`${API_BASE_URL}/admin/vehicles?${params}`, {
+        headers: { "x-admin-api-key": apiKey }
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Could not load vehicles");
+      setVehicles(body.items);
+      setTotal(body.total);
+      setStatus({ type: "idle" });
+    } catch (error) {
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not load vehicles" });
+    }
+  }
+
+  async function viewRentals(vehicle: AdminVehicle) {
+    setStatus({ type: "loading" });
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/vehicles/${vehicle.vehicleId}/rentals`, {
+        headers: { "x-admin-api-key": apiKey }
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Could not load vehicle rentals");
+      setSelectedVehicle(vehicle);
+      setRentals(body.items);
+      setStatus({ type: "idle" });
+    } catch (error) {
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not load vehicle rentals" });
+    }
+  }
+
+  async function deleteVehicle(vehicle: AdminVehicle) {
+    const confirmed = window.confirm(
+      `Delete ${vehicle.vehicleName}? This will also delete ${vehicle.rentalCount} annual rental record${vehicle.rentalCount === 1 ? "" : "s"} for this vehicle.`
+    );
+    if (!confirmed) return;
+    setStatus({ type: "loading" });
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/vehicles/${vehicle.vehicleId}`, {
+        method: "DELETE",
+        headers: { "x-admin-api-key": apiKey }
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Could not delete vehicle");
+      if (selectedVehicle?.vehicleId === vehicle.vehicleId) {
+        setSelectedVehicle(null);
+        setRentals([]);
+      }
+      await loadVehicles();
+      setStatus({ type: "success", message: `Vehicle deleted. ${body.deletedRentals ?? 0} rental records were also removed.` });
+    } catch (error) {
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not delete vehicle" });
+    }
+  }
+
+  useEffect(() => {
+    void loadVehicles("");
+  }, [apiKey]);
+
+  if (selectedVehicle) {
+    return (
+      <div>
+        <div className="admin-header">
+          <div>
+            <h2>Annual rentals</h2>
+            <p>{selectedVehicle.vehicleName}</p>
+          </div>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => {
+              setSelectedVehicle(null);
+              setRentals([]);
+            }}
+          >
+            Back to vehicles
+          </button>
+        </div>
+
+        {status.type === "error" && <div className="message error">{status.message}</div>}
+
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Annual mileage</th>
+                <th>Provider</th>
+                <th>Annual rental</th>
+                <th>Effective at</th>
+                <th>External quote ref</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rentals.map((rental) => (
+                <tr key={rental.vehicleRentalRateId}>
+                  <td>{rental.annualMileage.toLocaleString("en-GB")}</td>
+                  <td>{rental.providerCode}</td>
+                  <td>{currency(Number(rental.annualRental))}</td>
+                  <td>{rental.effectiveAt ? new Date(rental.effectiveAt).toLocaleString("en-GB") : "—"}</td>
+                  <td>{rental.externalQuoteReference ?? "—"}</td>
+                </tr>
+              ))}
+              {rentals.length === 0 && status.type !== "loading" && (
+                <tr><td colSpan={5}>No annual rentals found for this vehicle.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {status.type === "loading" && <p className="loading-note">Loading…</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="admin-header">
+        <div>
+          <h2>Vehicles</h2>
+          <p>Search the vehicle table, view annual rentals, or delete vehicles from CARculator.</p>
+        </div>
+        <button type="button" className="secondary-button" onClick={() => void loadVehicles()}>
+          Refresh
+        </button>
+      </div>
+
+      <form
+        className="admin-search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const nextSearch = searchText.trim();
+          setActiveSearch(nextSearch);
+          void loadVehicles(nextSearch);
+        }}
+      >
+        <label htmlFor="admin-vehicle-search">Search/filter vehicle</label>
+        <div>
+          <input
+            id="admin-vehicle-search"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="Enter vehicle name"
+          />
+          <button className="small-button" type="submit">Search</button>
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => {
+              setSearchText("");
+              setActiveSearch("");
+              void loadVehicles("");
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      </form>
+
+      {status.type === "error" && <div className="message error">{status.message}</div>}
+      {status.type === "success" && <div className="message success">{status.message}</div>}
+
+      <p className="loading-note">
+        Showing {vehicles.length.toLocaleString("en-GB")} of {total.toLocaleString("en-GB")} vehicles{activeSearch ? ` matching “${activeSearch}”` : ""}.
+      </p>
+
+      <div className="admin-table-wrap">
+        <table className="admin-table admin-vehicles-table">
+          <thead>
+            <tr>
+              <th>Vehicle ID</th>
+              <th>Vehicle</th>
+              <th>Fuel type</th>
+              <th>List price</th>
+              <th>CO2</th>
+              <th>Range</th>
+              <th>Rental records</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {vehicles.map((vehicle) => (
+              <tr key={vehicle.vehicleId}>
+                <td>{vehicle.vehicleId}</td>
+                <td>{vehicle.vehicleName}</td>
+                <td>{vehicle.fuelType}</td>
+                <td>{currency(Number(vehicle.listPrice))}</td>
+                <td>{vehicle.co2Emissions ?? "—"}</td>
+                <td>{vehicle.electricRange ?? "—"}</td>
+                <td>{vehicle.rentalCount}</td>
+                <td>
+                  <div className="table-actions">
+                    <button type="button" className="small-button" onClick={() => void viewRentals(vehicle)}>View rentals</button>
+                    <button type="button" className="text-button" onClick={() => void deleteVehicle(vehicle)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {vehicles.length === 0 && status.type !== "loading" && (
+              <tr><td colSpan={8}>No matching vehicles found.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {status.type === "loading" && <p className="loading-note">Loading…</p>}
+    </div>
+  );
+}
+
+function AdminSettings({ apiKey }: { apiKey: string }) {
+  const [quoteAppPasskey, setQuoteAppPasskey] = useState("");
+  const [status, setStatus] = useState<{ type: "loading" | "idle" | "success" | "error"; message?: string }>({ type: "loading" });
+
+  async function loadSettings() {
+    setStatus({ type: "loading" });
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/settings`, {
+        headers: { "x-admin-api-key": apiKey }
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Could not load settings");
+      setQuoteAppPasskey(body.quoteAppPasskey ?? "");
+      setStatus({ type: "idle" });
+    } catch (error) {
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not load settings" });
+    }
+  }
+
+  async function saveSettings(event: FormEvent) {
+    event.preventDefault();
+    setStatus({ type: "loading" });
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-api-key": apiKey },
+        body: JSON.stringify({ quoteAppPasskey })
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Could not save settings");
+      window.sessionStorage.removeItem("lease-car-quote-key");
+      setStatus({ type: "success", message: "Quote app passkey updated. Anyone already in CARculator may need to re-enter the new passkey on their next session." });
+    } catch (error) {
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not save settings" });
+    }
+  }
+
+  useEffect(() => {
+    void loadSettings();
+  }, [apiKey]);
+
+  return (
+    <div>
+      <div className="admin-header">
+        <div>
+          <h2>Settings</h2>
+          <p>Change application settings used by CARculator.</p>
+        </div>
+        <button type="button" className="secondary-button" onClick={() => void loadSettings()}>
+          Refresh
+        </button>
+      </div>
+
+      {status.type === "error" && <div className="message error">{status.message}</div>}
+      {status.type === "success" && <div className="message success">{status.message}</div>}
+
+      <form className="admin-settings-form" onSubmit={saveSettings}>
+        <div className="question-block">
+          <label htmlFor="quote-app-passkey">Quote app passkey</label>
+          <input
+            id="quote-app-passkey"
+            value={quoteAppPasskey}
+            onChange={(event) => setQuoteAppPasskey(event.target.value)}
+            minLength={4}
+            maxLength={100}
+            required
+          />
+          <p className="form-hint">This is the passkey users enter on the first CARculator screen.</p>
+        </div>
+        <button className="service-button" type="submit" disabled={status.type === "loading"}>
+          Save quote app passkey
+        </button>
+      </form>
+      {status.type === "loading" && <p className="loading-note">Loading…</p>}
+    </div>
+  );
 }
 
 function AdminQuotes({ apiKey }: { apiKey: string }) {

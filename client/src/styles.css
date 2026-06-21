@@ -564,6 +564,26 @@ button:focus {
   font-weight: 700;
 }
 .admin-unlock { max-width: 520px; }
+.admin-search,
+.admin-settings-form {
+  max-width: 720px;
+  margin-bottom: 24px;
+}
+.admin-search label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.admin-search div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.admin-search input {
+  flex: 1 1 320px;
+  min-width: 220px;
+}
 .admin-page-heading {
   margin-bottom: 28px;
 }
