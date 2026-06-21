@@ -354,6 +354,14 @@ function afcLabel(rate: AgendaForChangePayRate) {
   return `Band ${rate.band} — ${currency(rate.annualSalary)}`;
 }
 
+function incomeTaxLabel(rate: IncomeTaxRate) {
+  const taxRate = normaliseRate(rate.taxRate);
+  if (taxRate === 0.2) return "£12,571 to £50,270 taxable pay (20%)";
+  if (taxRate === 0.4) return "£50,271 to £125,140 taxable pay (40%)";
+  if (taxRate === 0.45) return "Over £125,140 taxable pay (45%)";
+  return `${rate.taxBand} (${percent(rate.taxRate)})`;
+}
+
 function isElectricHybrid(vehicle: Vehicle) {
   const fuel = vehicle.fuelType.toLowerCase();
   return fuel.includes("hybrid") && !fuel.includes("mild") && Number(vehicle.electricRange ?? 0) > 0;
@@ -1029,7 +1037,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             <label htmlFor="income-tax">What level of income tax do you pay?</label>
             <select id="income-tax" value={taxBand} onChange={(event) => setTaxBand(event.target.value)} required>
               {incomeTaxRates.map((rate) => (
-                <option key={rate.taxBand} value={rate.taxBand}>{rate.taxBand} rate ({percent(rate.taxRate)})</option>
+                <option key={rate.taxBand} value={rate.taxBand}>{incomeTaxLabel(rate)}</option>
               ))}
             </select>
           </div>
