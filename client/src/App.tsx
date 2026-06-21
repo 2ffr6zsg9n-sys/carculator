@@ -195,6 +195,18 @@ function CopyrightFooter() {
   );
 }
 
+function PrivacyNotice() {
+  return (
+    <div className="notice privacy-notice">
+      <h3>Privacy notice</h3>
+      <p>
+        CARculator stores the quote details, quote reference, date and time, IP address, and browser/device information
+        for audit and support purposes. We do not store your name, employee number, or email address.
+      </p>
+    </div>
+  );
+}
+
 const adminTables: AdminTableConfig[] = [
   {
     slug: "employers",
@@ -1323,6 +1335,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             If you are interested in leasing this vehicle, please email this quote to Fleet Management.
             They will send you a revised quote and include any of the following optional extras.
           </p>
+          <PrivacyNotice />
 
           <div className="question-block">
             <label htmlFor="order-full-name">Full name</label>
@@ -2059,6 +2072,7 @@ export function App() {
           <section className="service-panel">
             <form className="admin-unlock" onSubmit={unlockQuoteSystem}>
               <h2>Access CARculator</h2>
+              <PrivacyNotice />
               <label htmlFor="quote-api-key">Passcode</label>
               <input
                 id="quote-api-key"
