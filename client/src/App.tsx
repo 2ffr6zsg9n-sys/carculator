@@ -1017,6 +1017,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
           <div className="question-block">
             <label htmlFor="employer">Employer</label>
+            <p className="field-hint">Which organisation do you work for?</p>
             <select id="employer" value={employerId} onChange={(event) => setEmployerId(event.target.value)} required>
               {employers.map((employer) => (
                 <option key={employer.employerId} value={employer.employerId}>{employer.organisation}</option>
@@ -1047,7 +1048,8 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
           {paysPension === "yes" && (
             <div className="question-block">
-              <label htmlFor="pension-tier">Level of pensionable earnings per year</label>
+              <label htmlFor="pension-tier">Level of pensionable pay per year</label>
+              <p className="field-hint">Select your pension contribution percentage. See your payslip for details.</p>
               <select id="pension-tier" value={pensionTier} onChange={(event) => setPensionTier(event.target.value)} required>
                 {pensionRates.map((rate) => (
                   <option key={rate.tier} value={rate.tier}>{pensionLabel(rate)}</option>
@@ -1098,6 +1100,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             <>
               <div className="question-block">
                 <label htmlFor="age-band">Age range</label>
+                <p className="field-hint">Select your age band.</p>
                 <select id="age-band" value={ageBand} onChange={(event) => setAgeBand(event.target.value)} required>
                   {nationalMinimumWageRates.map((rate) => (
                     <option key={rate.nmwRateId} value={rate.ageBand}>
@@ -1137,6 +1140,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
               {isAgendaForChange === "yes" ? (
                 <div className="question-block">
                   <label htmlFor="afc-pay">Agenda for Change band and annual salary</label>
+                  <p className="field-hint">Select your band and full-time equivalent salary.</p>
                   <select id="afc-pay" value={afcPayRateId} onChange={(event) => setAFCPayRateId(event.target.value)} required>
                     {agendaForChangePayRates.map((rate) => (
                       <option key={rate.afcPayRateId} value={rate.afcPayRateId}>{afcLabel(rate)}</option>
