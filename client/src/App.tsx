@@ -728,9 +728,10 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         const annualRental = Number(cheapestRental.annualRental);
         const salarySacrificeAnnual = (annualRental + Number(selectedEmployer.adminFee) + Number(selectedEmployer.insuranceFee)) * (1 + vatRate);
         const salarySacrificeMonthly = salarySacrificeAnnual / 12;
-        const taxSavingAnnual = salarySacrificeAnnual * taxRate;
         const niSavingAnnual = salarySacrificeAnnual * niRate;
         const pensionSavingAnnual = salarySacrificeAnnual * pensionContributionRate;
+        const taxableSalarySacrifice = Math.max(0, salarySacrificeAnnual - pensionSavingAnnual);
+        const taxSavingAnnual = taxableSalarySacrifice * taxRate;
         const benefit = benefitRateForVehicle(vehicle);
         const companyCarTaxAnnual = Number(vehicle.listPrice) * benefit.rate * taxRate;
         const netAnnual = salarySacrificeAnnual - taxSavingAnnual - niSavingAnnual - pensionSavingAnnual + companyCarTaxAnnual;
