@@ -628,9 +628,8 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     const annualRental = Number(result.annualRental);
     const insurance = Number(selectedEmployer?.insuranceFee ?? 0);
     const adminFees = Number(selectedEmployer?.adminFee ?? 0);
-    const additionalContribution = 0;
-    const vat = (annualRental + insurance + adminFees + additionalContribution) * normaliseRate(selectedNI?.vatRate ?? 0);
-    const salarySacrifice = annualRental + insurance + adminFees + additionalContribution + vat;
+    const vat = (annualRental + insurance + adminFees) * normaliseRate(selectedNI?.vatRate ?? 0);
+    const salarySacrifice = annualRental + insurance + adminFees + vat;
     const taxableBenefit = Number(result.vehicle.listPrice) * result.bikRate;
     const savingsOnPaye = result.taxSavingAnnual;
     const savingsOnNi = result.niSavingAnnual;
@@ -640,14 +639,13 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     const ni1aCost = taxableBenefit * normaliseRate(selectedNI?.class1ARate ?? 0);
     const employerNiSavings = salarySacrifice * normaliseRate(selectedNI?.employerRate ?? 0);
     const employerPensionSavings = salarySacrifice * normaliseRate(selectedNI?.employerPensionRate ?? 0);
-    const viability = employerNiSavings + employerPensionSavings - ni1aCost;
+    const totalEmployerSavings = employerNiSavings + employerPensionSavings - ni1aCost;
 
     return {
       main: [
         ["Annual Rental", annualRental],
         ["Insurance", insurance],
         ["Admin Fees", adminFees],
-        ["Additional Contribution", additionalContribution],
         ["VAT", vat],
         ["Salary Sacrifice", salarySacrifice, true],
         ["Taxable Benefit", taxableBenefit],
@@ -661,8 +659,40 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         ["NI 1A Cost", ni1aCost],
         ["ERs NI Savings", employerNiSavings],
         ["ERs Pension Savings", employerPensionSavings],
-        ["Viability", viability, true]
+        ["Total Employer Savings", totalEmployerSavings, true]
       ] as const
+    };
+  }
+
+  function nmwBreakdown(result: QuoteResult) {
+    if (result.nmwSkipped) {
+      return {
+        skipped: true,
+        rows: [["Status", "Eligibility subject to National Minimum Wage check"]]
+      };
+    }
+    const annualSalary = isAgendaForChange === "yes"
+      ? Number(selectedAFCPayRate?.annualSalary)
+      : Number(fullTimeAnnualSalary);
+    const contracted = Number(contractedHours);
+    const wholeTime = Number(wholeTimeHours);
+    const revisedFullTimeSalary = annualSalary - result.salarySacrificeAnnual;
+    const annualPartTimeEarnings = (revisedFullTimeSalary / wholeTime) * contracted;
+    const hourlyRate = annualPartTimeEarnings / 52.1428 / contracted;
+    const minimumRate = Number(selectedNMWRate?.hourlyRate ?? 0);
+    return {
+      skipped: false,
+      rows: [
+        ["Salary used", currency(annualSalary)],
+        ["Less annual salary sacrifice", currency(result.salarySacrificeAnnual)],
+        ["Revised full-time equivalent salary", currency(revisedFullTimeSalary)],
+        ["Full-time equivalent weekly hours/sessions", wholeTime.toLocaleString("en-GB")],
+        ["Weekly contracted hours/sessions", contracted.toLocaleString("en-GB")],
+        ["Adjusted annual earnings for contracted hours", currency(annualPartTimeEarnings)],
+        ["Calculated hourly rate", currency(hourlyRate)],
+        ["National Minimum Wage rate", currency(minimumRate)],
+        ["Result", hourlyRate < minimumRate ? "Below National Minimum Wage" : "Above National Minimum Wage"]
+      ]
     };
   }
 
@@ -1290,6 +1320,20 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                     <th scope="row">{label}</th>
                     <td>{currency(amount)}</td>
                     <td>{currency(amount / 12)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="nmw-breakdown">
+            <h3>National Minimum Wage calculation</h3>
+            <table className="nmw-breakdown-table">
+              <tbody>
+                {nmwBreakdown(selectedBreakdownResult).rows.map(([label, value]) => (
+                  <tr key={label}>
+                    <th scope="row">{label}</th>
+                    <td>{value}</td>
                   </tr>
                 ))}
               </tbody>

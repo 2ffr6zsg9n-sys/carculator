@@ -505,6 +505,27 @@ button:focus {
 .breakdown-table tr.highlighted td {
   background: #f3f2f1;
 }
+.nmw-breakdown {
+  max-width: 760px;
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.nmw-breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.nmw-breakdown-table th,
+.nmw-breakdown-table td {
+  padding: 10px 0;
+  border-bottom: 1px solid #d8dde0;
+  text-align: left;
+  vertical-align: top;
+}
+.nmw-breakdown-table th {
+  width: 48%;
+  color: var(--text-muted);
+}
 .admin-tabs {
   display: flex;
   gap: 8px;
