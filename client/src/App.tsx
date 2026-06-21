@@ -293,7 +293,7 @@ const adminTables: AdminTableConfig[] = [
     description: "Income tax rates used for salary-sacrifice savings calculations.",
     idKey: "taxBand",
     fields: [
-      { key: "taxBand", label: "Tax band", readonlyOnEdit: true },
+      { key: "taxBand", label: "Taxable pay", readonlyOnEdit: true },
       { key: "taxRate", label: "Tax rate", type: "number", step: "0.000001" }
     ],
     emptyRow: { taxBand: "", taxRate: 0 }
@@ -355,10 +355,6 @@ function afcLabel(rate: AgendaForChangePayRate) {
 }
 
 function incomeTaxLabel(rate: IncomeTaxRate) {
-  const taxRate = normaliseRate(rate.taxRate);
-  if (taxRate === 0.2) return "£12,571 to £50,270 taxable pay (20%)";
-  if (taxRate === 0.4) return "£50,271 to £125,140 taxable pay (40%)";
-  if (taxRate === 0.45) return "Over £125,140 taxable pay (45%)";
   return `${rate.taxBand} (${percent(rate.taxRate)})`;
 }
 
