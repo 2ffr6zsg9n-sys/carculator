@@ -7,7 +7,14 @@ export default defineConfig({
   base: process.env.GITHUB_ACTIONS ? "/carculator/" : "/",
   build: {
     outDir: "../dist-web",
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: "assets/index.js",
+        chunkFileNames: "assets/[name].js",
+        assetFileNames: "assets/[name].[ext]"
+      }
+    }
   },
   server: {
     port: 5173,

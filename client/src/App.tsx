@@ -2006,17 +2006,26 @@ function AdminSettings({ apiKey }: { apiKey: string }) {
 function AdminQuotes({ apiKey }: { apiKey: string }) {
   const [quotes, setQuotes] = useState<StoredQuoteSummary[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<StoredQuoteDetail | null>(null);
+  const [searchText, setSearchText] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [status, setStatus] = useState<{ type: "loading" | "idle" | "success" | "error"; message?: string }>({ type: "loading" });
+  const pageSize = 50;
 
-  async function loadQuotes() {
+  async function loadQuotes(search = activeSearch, nextPage = page) {
     setStatus({ type: "loading" });
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/quotes`, {
+      const params = new URLSearchParams({ limit: String(pageSize), page: String(nextPage) });
+      if (search.trim()) params.set("search", search.trim());
+      const response = await fetch(`${API_BASE_URL}/admin/quotes?${params}`, {
         headers: { "x-admin-api-key": apiKey }
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Could not load stored quotes");
       setQuotes(body.items);
+      setTotal(body.total);
+      setPage(nextPage);
       setStatus({ type: "idle" });
     } catch (error) {
       setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not load stored quotes" });
@@ -2049,7 +2058,7 @@ function AdminQuotes({ apiKey }: { apiKey: string }) {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Could not delete quote");
       setSelectedQuote(null);
-      await loadQuotes();
+      await loadQuotes(activeSearch, page);
       setStatus({ type: "success", message: "Quote deleted." });
     } catch (error) {
       setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not delete quote" });
@@ -2057,7 +2066,7 @@ function AdminQuotes({ apiKey }: { apiKey: string }) {
   }
 
   useEffect(() => {
-    void loadQuotes();
+    void loadQuotes("", 1);
   }, [apiKey]);
 
   if (selectedQuote) {
@@ -2145,10 +2154,70 @@ function AdminQuotes({ apiKey }: { apiKey: string }) {
           <h2>Stored Quotes</h2>
           <p>Quotes calculated in CARculator. Employee names and email addresses are not stored.</p>
         </div>
-        <button className="secondary-button" type="button" onClick={() => void loadQuotes()}>Refresh</button>
+        <button className="secondary-button" type="button" onClick={() => void loadQuotes(activeSearch, page)}>Refresh</button>
       </div>
+
+      <form
+        className="admin-search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const nextSearch = searchText.trim();
+          setActiveSearch(nextSearch);
+          void loadQuotes(nextSearch, 1);
+        }}
+      >
+        <label htmlFor="admin-quote-search">Search/filter stored quotes</label>
+        <div>
+          <input
+            id="admin-quote-search"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="Enter quote number or vehicle name"
+          />
+          <button className="small-button" type="submit">Search</button>
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => {
+              setSearchText("");
+              setActiveSearch("");
+              void loadQuotes("", 1);
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      </form>
+
       {status.type === "error" && <div className="message error">{status.message}</div>}
       {status.type === "success" && <div className="message success">{status.message}</div>}
+
+      <div className="admin-pagination">
+        <p>
+          Showing {total === 0 ? 0 : ((page - 1) * pageSize + 1).toLocaleString("en-GB")}
+          {" "}to {Math.min(page * pageSize, total).toLocaleString("en-GB")}
+          {" "}of {total.toLocaleString("en-GB")} quotes{activeSearch ? ` matching “${activeSearch}”` : ""}.
+        </p>
+        <div>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={page <= 1 || status.type === "loading"}
+            onClick={() => void loadQuotes(activeSearch, page - 1)}
+          >
+            Previous 50
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={page * pageSize >= total || status.type === "loading"}
+            onClick={() => void loadQuotes(activeSearch, page + 1)}
+          >
+            Next 50
+          </button>
+        </div>
+      </div>
+
       <div className="admin-table-wrap">
         <table className="admin-table">
           <thead>
@@ -2400,7 +2469,7 @@ export function App() {
           "x-quote-api-key": nextKey
         }
       });
-      if (response.status === 401) throw new Error("The passcode is not correct.");
+      if (response.status === 401) throw new Error("The passkey is not correct.");
       if (!response.ok) throw new Error("CARculator could not contact the quote service. Please try again.");
       window.sessionStorage.setItem("lease-car-quote-key", nextKey);
       setQuoteApiKey(nextKey);
@@ -2410,7 +2479,7 @@ export function App() {
           ? "CARculator could not contact the quote service. Please refresh the page and try again."
           : error instanceof Error
             ? error.message
-            : "The passcode could not be checked."
+            : "The passkey could not be checked."
       );
     } finally {
       setCheckingQuoteAccess(false);
@@ -2435,13 +2504,13 @@ export function App() {
           <section className="intro">
             <BrandHeader />
             <h1>Welcome to CARculator</h1>
-            <p>Enter the scheme passcode to compare lease car salary sacrifice costs.</p>
+            <p>Enter the scheme passkey to compare lease car salary sacrifice costs.</p>
           </section>
           <section className="service-panel">
             <form className="admin-unlock" onSubmit={unlockQuoteSystem}>
               <h2>Access CARculator</h2>
               <PrivacyNotice />
-              <label htmlFor="quote-api-key">Passcode</label>
+              <label className="quote-access-label" htmlFor="quote-api-key">Passkey</label>
               <input
                 id="quote-api-key"
                 type="password"

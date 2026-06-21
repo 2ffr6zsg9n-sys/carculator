@@ -10,7 +10,6 @@
   --nhs-light-blue: #e8f1fb;
   --border: #b1b4b6;
   --text-muted: #505a5f;
-  --green: #00703c;
   --red: #d4351c;
 }
 
@@ -240,12 +239,12 @@ button:focus {
 .small-button,
 .secondary-button {
   border: 0;
-  background: var(--green);
+  background: var(--nhs-blue);
   color: #fff;
   font-weight: 700;
   cursor: pointer;
   padding: 12px 18px;
-  box-shadow: 0 3px 0 #002d18;
+  box-shadow: 0 3px 0 var(--nhs-dark-blue);
 }
 .service-button,
 .submit-button {
@@ -256,28 +255,9 @@ button:focus {
 .submit-button:hover,
 .small-button:hover,
 .secondary-button:hover {
-  background: #005a30;
-}
-.service-button:disabled { opacity: .65; cursor: wait; }
-.admin-card .service-button,
-.admin-card .submit-button,
-.admin-card .small-button,
-.admin-card .secondary-button {
-  background: var(--nhs-blue);
-  box-shadow: 0 3px 0 var(--nhs-dark-blue);
-}
-.admin-card .service-button:hover,
-.admin-card .submit-button:hover,
-.admin-card .small-button:hover,
-.admin-card .secondary-button:hover {
   background: var(--nhs-dark-blue);
 }
-.admin-card .service-button:disabled,
-.admin-card .submit-button:disabled,
-.admin-card .small-button:disabled,
-.admin-card .secondary-button:disabled {
-  background: var(--nhs-blue);
-}
+.service-button:disabled { opacity: .65; cursor: wait; }
 .secondary-service-button {
   border: 2px solid var(--nhs-blue);
   background: #fff;
@@ -303,7 +283,7 @@ button:focus {
   font-weight: 700;
 }
 .message.error { color: #0b0c0c; background: #fbeae5; border-color: var(--red); }
-.message.success { color: #0b0c0c; background: #e9f5ee; border-color: var(--green); }
+.message.success { color: #0b0c0c; background: var(--nhs-light-blue); border-color: var(--nhs-blue); }
 .notice {
   margin-top: 22px;
   border-left: 6px solid var(--nhs-blue);
@@ -583,6 +563,10 @@ button:focus {
   font-weight: 700;
 }
 .admin-unlock { max-width: 520px; }
+.quote-access-label {
+  display: block;
+  margin-top: 28px;
+}
 .admin-search,
 .admin-settings-form {
   max-width: 720px;
