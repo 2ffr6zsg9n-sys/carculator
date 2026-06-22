@@ -363,19 +363,6 @@ function parseCurrencyInput(value: string) {
   return Number(value.replace(/[£,\s]/g, ""));
 }
 
-function currentTaxYearFraction() {
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const taxYearStartThisYear = new Date(currentYear, 3, 6);
-  const taxYearStart = today >= taxYearStartThisYear
-    ? taxYearStartThisYear
-    : new Date(currentYear - 1, 3, 6);
-  const nextTaxYearStart = new Date(taxYearStart.getFullYear() + 1, 3, 6);
-  const elapsed = Math.max(1, today.getTime() - taxYearStart.getTime());
-  const fullYear = nextTaxYearStart.getTime() - taxYearStart.getTime();
-  return Math.min(1, Math.max(1 / 365, elapsed / fullYear));
-}
-
 function allowanceFromTaxCode(taxCode: string) {
   const code = taxCode.trim().toUpperCase().replace(/\s+/g, "");
   if (!code) return { allowance: 12570, note: "No tax code entered, so the standard 1257L allowance has been assumed." };
@@ -392,14 +379,30 @@ function allowanceFromTaxCode(taxCode: string) {
   return { allowance, note: `Estimated personal allowance from tax code ${code}: ${currency(allowance)}.` };
 }
 
-function estimateTaxBand(taxCode: string, yearToDateTaxablePay: string, yearToDateTaxPaid: string) {
+const payslipMonthOptions = [
+  { label: "April", monthNumber: 1 },
+  { label: "May", monthNumber: 2 },
+  { label: "June", monthNumber: 3 },
+  { label: "July", monthNumber: 4 },
+  { label: "August", monthNumber: 5 },
+  { label: "September", monthNumber: 6 },
+  { label: "October", monthNumber: 7 },
+  { label: "November", monthNumber: 8 },
+  { label: "December", monthNumber: 9 },
+  { label: "January", monthNumber: 10 },
+  { label: "February", monthNumber: 11 },
+  { label: "March", monthNumber: 12 }
+];
+
+function estimateTaxBand(taxCode: string, payslipMonth: number, yearToDateTaxablePay: string, yearToDateTaxPaid: string) {
   const taxablePay = parseCurrencyInput(yearToDateTaxablePay);
   const taxPaid = parseCurrencyInput(yearToDateTaxPaid);
   if (!Number.isFinite(taxablePay) || taxablePay <= 0) return null;
   if (!Number.isFinite(taxPaid) || taxPaid < 0) return null;
 
   const taxCodeDetails = allowanceFromTaxCode(taxCode);
-  const fraction = currentTaxYearFraction();
+  const monthNumber = Math.min(12, Math.max(1, payslipMonth || 1));
+  const fraction = monthNumber / 12;
   const allowanceUsedToDate = Number(taxCodeDetails.allowance) * fraction;
   const taxablePayAfterAllowance = Math.max(0, taxablePay - allowanceUsedToDate);
   const effectiveTaxedPayRate = taxablePayAfterAllowance > 0 ? taxPaid / taxablePayAfterAllowance : 0;
@@ -419,6 +422,8 @@ function estimateTaxBand(taxCode: string, yearToDateTaxablePay: string, yearToDa
   return {
     estimatedRate,
     taxCodeNote: taxCodeDetails.note,
+    payslipMonth: payslipMonthOptions.find((option) => option.monthNumber === monthNumber)?.label ?? "Selected month",
+    taxYearMonthsUsed: monthNumber,
     allowanceUsedToDate,
     taxablePayAfterAllowance,
     estimatedAnnualTaxablePay,
@@ -2582,9 +2587,10 @@ function AdminTable({ config, apiKey }: { config: AdminTableConfig; apiKey: stri
 
 function TaxEstimatorPage() {
   const [taxCode, setTaxCode] = useState("");
+  const [payslipMonth, setPayslipMonth] = useState(1);
   const [yearToDateTaxablePay, setYearToDateTaxablePay] = useState("");
   const [yearToDateTaxPaid, setYearToDateTaxPaid] = useState("");
-  const estimate = estimateTaxBand(taxCode, yearToDateTaxablePay, yearToDateTaxPaid);
+  const estimate = estimateTaxBand(taxCode, payslipMonth, yearToDateTaxablePay, yearToDateTaxPaid);
 
   return (
     <>
@@ -2598,11 +2604,8 @@ function TaxEstimatorPage() {
         <section className="service-panel tax-estimator">
           <h2>Estimate your tax rate</h2>
           <p className="form-hint">
-            Your tax code shows on your payslip. The year-to-date taxable pay and tax paid figures usually show in the bottom left-hand corner of your payslip.
+            Use the latest payslip you have available. Your tax code shows on your payslip, and the year-to-date taxable pay and tax paid figures usually show in the bottom left-hand corner.
           </p>
-          <div className="notice">
-            This is an estimate only. Your actual tax position can be affected by tax-code changes, previous employments, benefits, arrears, and payroll adjustments.
-          </div>
 
           <div className="question-block">
             <label htmlFor="estimator-tax-code">Tax code</label>
@@ -2613,6 +2616,21 @@ function TaxEstimatorPage() {
               placeholder="For example 1257L"
               autoComplete="off"
             />
+          </div>
+
+          <div className="question-block">
+            <label htmlFor="estimator-payslip-month">Which month's payslip are you using?</label>
+            <select
+              id="estimator-payslip-month"
+              value={payslipMonth}
+              onChange={(event) => setPayslipMonth(Number(event.target.value))}
+            >
+              {payslipMonthOptions.map((option) => (
+                <option key={option.monthNumber} value={option.monthNumber}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="question-block">
@@ -2650,6 +2668,10 @@ function TaxEstimatorPage() {
                   <dd>{currency(estimate.estimatedAnnualTaxablePay)}</dd>
                 </div>
                 <div>
+                  <dt>Payslip month used</dt>
+                  <dd>{estimate.payslipMonth} ({estimate.taxYearMonthsUsed} month{estimate.taxYearMonthsUsed === 1 ? "" : "s"} of tax-free pay)</dd>
+                </div>
+                <div>
                   <dt>Personal allowance used to date</dt>
                   <dd>{currency(estimate.allowanceUsedToDate)}</dd>
                 </div>
@@ -2682,6 +2704,10 @@ function TaxEstimatorPage() {
           ) : (
             <p className="loading-note">Enter your tax code, year-to-date taxable pay, and year-to-date tax paid to see an estimate.</p>
           )}
+
+          <div className="notice estimator-caveat">
+            This is an estimate only. Your actual tax position can be affected by tax-code changes, previous employments, benefits, arrears, and payroll adjustments.
+          </div>
 
           <div className="button-row">
             <button className="service-button" type="button" onClick={() => window.close()}>
