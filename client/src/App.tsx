@@ -2587,10 +2587,28 @@ function AdminTable({ config, apiKey }: { config: AdminTableConfig; apiKey: stri
 
 function TaxEstimatorPage() {
   const [taxCode, setTaxCode] = useState("");
-  const [payslipMonth, setPayslipMonth] = useState(1);
+  const [payslipMonth, setPayslipMonth] = useState("");
   const [yearToDateTaxablePay, setYearToDateTaxablePay] = useState("");
   const [yearToDateTaxPaid, setYearToDateTaxPaid] = useState("");
-  const estimate = estimateTaxBand(taxCode, payslipMonth, yearToDateTaxablePay, yearToDateTaxPaid);
+  const [submittedEstimate, setSubmittedEstimate] = useState<NonNullable<ReturnType<typeof estimateTaxBand>> | null>(null);
+  const [estimatorError, setEstimatorError] = useState("");
+
+  const clearSubmittedEstimate = () => {
+    setSubmittedEstimate(null);
+    setEstimatorError("");
+  };
+
+  const handleTaxEstimatorSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextEstimate = estimateTaxBand(taxCode, Number(payslipMonth), yearToDateTaxablePay, yearToDateTaxPaid);
+    if (!nextEstimate) {
+      setSubmittedEstimate(null);
+      setEstimatorError("Please complete all four fields with figures from your payslip.");
+      return;
+    }
+    setEstimatorError("");
+    setSubmittedEstimate(nextEstimate);
+  };
 
   return (
     <>
@@ -2607,103 +2625,128 @@ function TaxEstimatorPage() {
             Use the latest payslip you have available. Your tax code shows on your payslip, and the year-to-date taxable pay and tax paid figures usually show in the bottom left-hand corner.
           </p>
 
-          <div className="question-block">
-            <label htmlFor="estimator-tax-code">Tax code</label>
-            <input
-              id="estimator-tax-code"
-              value={taxCode}
-              onChange={(event) => setTaxCode(event.target.value)}
-              placeholder="For example 1257L"
-              autoComplete="off"
-            />
-          </div>
+          <form onSubmit={handleTaxEstimatorSubmit}>
+            <div className="question-block">
+              <label htmlFor="estimator-tax-code">Tax code</label>
+              <input
+                id="estimator-tax-code"
+                value={taxCode}
+                onChange={(event) => {
+                  setTaxCode(event.target.value);
+                  clearSubmittedEstimate();
+                }}
+                placeholder="For example 1257L"
+                autoComplete="off"
+                required
+              />
+            </div>
 
-          <div className="question-block">
-            <label htmlFor="estimator-payslip-month">Which month's payslip are you using?</label>
-            <select
-              id="estimator-payslip-month"
-              value={payslipMonth}
-              onChange={(event) => setPayslipMonth(Number(event.target.value))}
-            >
-              {payslipMonthOptions.map((option) => (
-                <option key={option.monthNumber} value={option.monthNumber}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="question-block">
+              <label htmlFor="estimator-payslip-month">Which month's payslip are you using?</label>
+              <select
+                id="estimator-payslip-month"
+                value={payslipMonth}
+                onChange={(event) => {
+                  setPayslipMonth(event.target.value);
+                  clearSubmittedEstimate();
+                }}
+                required
+              >
+                <option value="">Select payslip month</option>
+                {payslipMonthOptions.map((option) => (
+                  <option key={option.monthNumber} value={option.monthNumber}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="question-block">
-            <label htmlFor="estimator-taxable-pay">Year-to-date taxable pay</label>
-            <input
-              id="estimator-taxable-pay"
-              value={yearToDateTaxablePay}
-              onChange={(event) => setYearToDateTaxablePay(event.target.value)}
-              placeholder="For example 12500.00"
-              inputMode="decimal"
-            />
-          </div>
+            <div className="question-block">
+              <label htmlFor="estimator-taxable-pay">Year-to-date taxable pay</label>
+              <input
+                id="estimator-taxable-pay"
+                value={yearToDateTaxablePay}
+                onChange={(event) => {
+                  setYearToDateTaxablePay(event.target.value);
+                  clearSubmittedEstimate();
+                }}
+                placeholder="For example 12500.00"
+                inputMode="decimal"
+                required
+              />
+            </div>
 
-          <div className="question-block">
-            <label htmlFor="estimator-tax-paid">Year-to-date tax paid</label>
-            <input
-              id="estimator-tax-paid"
-              value={yearToDateTaxPaid}
-              onChange={(event) => setYearToDateTaxPaid(event.target.value)}
-              placeholder="For example 1600.00"
-              inputMode="decimal"
-            />
-          </div>
+            <div className="question-block">
+              <label htmlFor="estimator-tax-paid">Year-to-date tax paid</label>
+              <input
+                id="estimator-tax-paid"
+                value={yearToDateTaxPaid}
+                onChange={(event) => {
+                  setYearToDateTaxPaid(event.target.value);
+                  clearSubmittedEstimate();
+                }}
+                placeholder="For example 1600.00"
+                inputMode="decimal"
+                required
+              />
+            </div>
 
-          {estimate ? (
+            {estimatorError && <div className="message error">{estimatorError}</div>}
+
+            <div className="button-row">
+              <button className="service-button" type="submit">
+                Continue
+              </button>
+            </div>
+          </form>
+
+          {submittedEstimate ? (
             <div className="estimator-result">
               <h3>Estimated tax rate</h3>
-              <div className="estimator-rate">{percent(estimate.estimatedRate)}</div>
+              <div className="estimator-rate">{percent(submittedEstimate.estimatedRate)}</div>
               <p>
-                Use the {percent(estimate.estimatedRate)} income tax option in CARculator unless your Payroll team or HMRC tells you otherwise.
+                Use the {percent(submittedEstimate.estimatedRate)} income tax option in CARculator unless your Payroll team or HMRC tells you otherwise.
               </p>
               <dl>
                 <div>
                   <dt>Estimated annual taxable pay</dt>
-                  <dd>{currency(estimate.estimatedAnnualTaxablePay)}</dd>
+                  <dd>{currency(submittedEstimate.estimatedAnnualTaxablePay)}</dd>
                 </div>
                 <div>
                   <dt>Payslip month used</dt>
-                  <dd>{estimate.payslipMonth} ({estimate.taxYearMonthsUsed} month{estimate.taxYearMonthsUsed === 1 ? "" : "s"} of tax-free pay)</dd>
+                  <dd>{submittedEstimate.payslipMonth} ({submittedEstimate.taxYearMonthsUsed} month{submittedEstimate.taxYearMonthsUsed === 1 ? "" : "s"} of tax-free pay)</dd>
                 </div>
                 <div>
                   <dt>Personal allowance used to date</dt>
-                  <dd>{currency(estimate.allowanceUsedToDate)}</dd>
+                  <dd>{currency(submittedEstimate.allowanceUsedToDate)}</dd>
                 </div>
                 <div>
                   <dt>Taxable pay after allowance to date</dt>
-                  <dd>{currency(estimate.taxablePayAfterAllowance)}</dd>
+                  <dd>{currency(submittedEstimate.taxablePayAfterAllowance)}</dd>
                 </div>
                 <div>
                   <dt>Estimated annual taxable pay after allowance</dt>
-                  <dd>{currency(estimate.estimatedAnnualTaxedPay)}</dd>
+                  <dd>{currency(submittedEstimate.estimatedAnnualTaxedPay)}</dd>
                 </div>
                 <div>
                   <dt>Estimated annual tax paid</dt>
-                  <dd>{currency(estimate.estimatedAnnualTaxPaid)}</dd>
+                  <dd>{currency(submittedEstimate.estimatedAnnualTaxPaid)}</dd>
                 </div>
                 <div>
                   <dt>Tax paid as a percentage of taxable pay to date</dt>
-                  <dd>{percent(estimate.effectiveTaxRateToDate)}</dd>
+                  <dd>{percent(submittedEstimate.effectiveTaxRateToDate)}</dd>
                 </div>
                 <div>
                   <dt>Tax paid as a percentage of taxable pay after allowance</dt>
-                  <dd>{percent(estimate.effectiveTaxedPayRate)}</dd>
+                  <dd>{percent(submittedEstimate.effectiveTaxedPayRate)}</dd>
                 </div>
                 <div>
                   <dt>Tax code note</dt>
-                  <dd>{estimate.taxCodeNote}</dd>
+                  <dd>{submittedEstimate.taxCodeNote}</dd>
                 </div>
               </dl>
             </div>
-          ) : (
-            <p className="loading-note">Enter your tax code, year-to-date taxable pay, and year-to-date tax paid to see an estimate.</p>
-          )}
+          ) : null}
 
           <div className="notice estimator-caveat">
             This is an estimate only. Your actual tax position can be affected by tax-code changes, previous employments, benefits, arrears, and payroll adjustments.
