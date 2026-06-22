@@ -2756,7 +2756,6 @@ function TaxEstimatorPage() {
             <button className="service-button" type="button" onClick={() => window.close()}>
               Close this window
             </button>
-            <a className="secondary-service-link" href="#quote">Back to CARculator</a>
           </div>
         </section>
       </main>
