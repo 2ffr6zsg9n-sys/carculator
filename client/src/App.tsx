@@ -93,6 +93,7 @@ type QuoteResult = {
   quoteReference?: number;
   quoteCreatedAt?: string;
   vehicle: Vehicle;
+  isOnOfferQuote?: boolean;
   annualRental: number;
   salarySacrificeAnnual: number;
   salarySacrificeMonthly: number;
@@ -124,6 +125,7 @@ type StoredQuoteSummary = {
   costToDriverMonthly: number;
   nmwBlocked: boolean;
   nmwSkipped: boolean;
+  isOnOfferQuote: boolean;
 };
 
 type StoredQuoteDetail = StoredQuoteSummary & {
@@ -598,7 +600,7 @@ function VehiclePicker({
 }
 
 function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [incomeTaxRates, setIncomeTaxRates] = useState<IncomeTaxRate[]>([]);
   const [pensionRates, setPensionRates] = useState<PensionRate[]>([]);
@@ -624,8 +626,10 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [maxMonthlyCost, setMaxMonthlyCost] = useState("");
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
   const [results, setResults] = useState<QuoteResult[]>([]);
+  const [offerResults, setOfferResults] = useState<QuoteResult[]>([]);
   const [selectedOrderResult, setSelectedOrderResult] = useState<QuoteResult | null>(null);
   const [selectedBreakdownResult, setSelectedBreakdownResult] = useState<QuoteResult | null>(null);
+  const [resultReturnStep, setResultReturnStep] = useState<4 | 7>(4);
   const [orderForm, setOrderForm] = useState({
     fullName: "",
     emailAddress: "",
@@ -780,6 +784,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       : "National Minimum Wage check completed in CARculator";
     const rows = [
       ["Quote reference", result.quoteReference ? String(result.quoteReference) : "Not available"],
+      ["Deal/Offer quote", result.isOnOfferQuote ? "Yes" : "No"],
       ["Full name", orderForm.fullName],
       ["Email address", orderForm.emailAddress],
       ["Vehicle", result.vehicle.vehicleName],
@@ -880,7 +885,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     };
   }
 
-  function quoteStoragePayload(result: QuoteResult) {
+  function quoteStoragePayload(result: QuoteResult, isOnOfferQuote = false) {
     const annualRental = Number(result.annualRental);
     const insurance = Number(selectedEmployer?.insuranceFee ?? 0);
     const adminFees = Number(selectedEmployer?.adminFee ?? 0);
@@ -941,7 +946,8 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       nmwWholeTimeHours: wholeTime,
       nmwContractedHours: contracted,
       nmwAdjustedAnnualEarnings: adjustedAnnualEarnings,
-      nmwResult: String(nmw.rows.find(([label]) => label === "Result")?.[1] ?? (result.nmwSkipped ? "Skipped" : ""))
+      nmwResult: String(nmw.rows.find(([label]) => label === "Result")?.[1] ?? (result.nmwSkipped ? "Skipped" : "")),
+      isOnOfferQuote
     };
   }
 
@@ -967,98 +973,102 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     };
   }
 
+  async function calculateAndStoreQuotes(vehicleChoices: Vehicle[], isOnOfferQuote = false) {
+    if (!selectedEmployer || !selectedTaxRate || !selectedNI) {
+      throw new Error("Some calculator reference data is missing.");
+    }
+
+    const rentalResponses = await Promise.all(vehicleChoices.map((vehicle) =>
+      fetch(`${API_BASE_URL}/vehicle-rentals?vehicleId=${vehicle.vehicleId}&annualMileage=${annualMileage}`, {
+        headers: { "x-quote-api-key": quoteApiKey }
+      })
+    ));
+    if (rentalResponses.some((response) => !response.ok)) throw new Error("The lease rental data is temporarily unavailable.");
+    const rentalBodies = await Promise.all(rentalResponses.map((response) => response.json()));
+    const taxRate = normaliseRate(selectedTaxRate.taxRate);
+    const niRate = taxRate >= 0.4
+      ? normaliseRate(selectedNI.employeeRateUpper)
+      : normaliseRate(selectedNI.employeeRateLower);
+    const pensionContributionRate = paysPension === "yes" && selectedPensionRate
+      ? normaliseRate(selectedPensionRate.contributionPercentage)
+      : 0;
+    const vatRate = normaliseRate(selectedNI.vatRate);
+
+    const nextResults = vehicleChoices.map((vehicle, index) => {
+      const rentals = rentalBodies[index].items as VehicleRentalRate[];
+      const cheapestRental = rentals
+        .slice()
+        .sort((left, right) => Number(left.annualRental) - Number(right.annualRental))[0];
+      if (!cheapestRental) {
+        throw new Error(`No ${annualMileage.toLocaleString("en-GB")} mile rental was found for ${vehicle.vehicleName}.`);
+      }
+      const annualRental = Number(cheapestRental.annualRental);
+      const salarySacrificeAnnual = (annualRental + Number(selectedEmployer.adminFee) + Number(selectedEmployer.insuranceFee)) * (1 + vatRate);
+      const salarySacrificeMonthly = salarySacrificeAnnual / 12;
+      const niSavingAnnual = salarySacrificeAnnual * niRate;
+      const pensionSavingAnnual = salarySacrificeAnnual * pensionContributionRate;
+      const taxableSalarySacrifice = Math.max(0, salarySacrificeAnnual - pensionSavingAnnual);
+      const taxSavingAnnual = taxableSalarySacrifice * taxRate;
+      const benefit = benefitRateForVehicle(vehicle);
+      const companyCarTaxAnnual = Number(vehicle.listPrice) * benefit.rate * taxRate;
+      const netAnnual = salarySacrificeAnnual - taxSavingAnnual - niSavingAnnual - pensionSavingAnnual + companyCarTaxAnnual;
+      const nmw = calculateNMWHourlyRate(salarySacrificeAnnual);
+      return {
+        vehicle,
+        isOnOfferQuote,
+        annualRental,
+        salarySacrificeAnnual,
+        salarySacrificeMonthly,
+        taxSavingAnnual,
+        niSavingAnnual,
+        pensionSavingAnnual,
+        companyCarTaxAnnual,
+        netAnnual,
+        netMonthly: netAnnual / 12,
+        bikRate: benefit.rate,
+        bikSource: benefit.source,
+        nmwSkipped: nmw.skipped,
+        nmwBlocked: nmw.blocked,
+        nmwHourlyRate: nmw.hourlyRate,
+        nmwMinimumRate: nmw.minimumRate
+      };
+    });
+
+    const saveResponse = await fetch(`${API_BASE_URL}/quotes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-quote-api-key": quoteApiKey
+      },
+      body: JSON.stringify({
+        quotes: nextResults.map((result) => quoteStoragePayload(result, isOnOfferQuote))
+      })
+    });
+    const saveBody = await saveResponse.json();
+    if (!saveResponse.ok) {
+      throw new Error(saveBody.error ?? "The quotes could not be stored.");
+    }
+    const savedQuotes = saveBody.items as Array<{ quoteReference: number; createdAt: string; vehicleId: number }>;
+    return nextResults.map((result) => {
+      const savedQuote = savedQuotes.find((quote) => String(quote.vehicleId) === String(result.vehicle.vehicleId));
+      return {
+        ...result,
+        quoteReference: savedQuote?.quoteReference,
+        quoteCreatedAt: savedQuote?.createdAt
+      };
+    });
+  }
+
   async function calculateQuotes() {
     const vehicleChoices = vehicles.filter((vehicle): vehicle is Vehicle => vehicle !== null);
     if (vehicleChoices.length === 0) {
       setStatus({ type: "error", message: "Please select at least one vehicle." });
       return;
     }
-    if (!selectedEmployer || !selectedTaxRate || !selectedNI) {
-      setStatus({ type: "error", message: "Some calculator reference data is missing." });
-      return;
-    }
 
     setStatus({ type: "loading" });
     try {
-      const rentalResponses = await Promise.all(vehicleChoices.map((vehicle) =>
-        fetch(`${API_BASE_URL}/vehicle-rentals?vehicleId=${vehicle.vehicleId}&annualMileage=${annualMileage}`, {
-          headers: { "x-quote-api-key": quoteApiKey }
-        })
-      ));
-      if (rentalResponses.some((response) => !response.ok)) throw new Error("The lease rental data is temporarily unavailable.");
-      const rentalBodies = await Promise.all(rentalResponses.map((response) => response.json()));
-      const taxRate = normaliseRate(selectedTaxRate.taxRate);
-      const niRate = taxRate >= 0.4
-        ? normaliseRate(selectedNI.employeeRateUpper)
-        : normaliseRate(selectedNI.employeeRateLower);
-      const pensionContributionRate = paysPension === "yes" && selectedPensionRate
-        ? normaliseRate(selectedPensionRate.contributionPercentage)
-        : 0;
-      const vatRate = normaliseRate(selectedNI.vatRate);
-
-      const nextResults = vehicleChoices.map((vehicle, index) => {
-        const rentals = rentalBodies[index].items as VehicleRentalRate[];
-        const cheapestRental = rentals
-          .slice()
-          .sort((left, right) => Number(left.annualRental) - Number(right.annualRental))[0];
-        if (!cheapestRental) {
-          throw new Error(`No ${annualMileage.toLocaleString("en-GB")} mile rental was found for ${vehicle.vehicleName}.`);
-        }
-        const annualRental = Number(cheapestRental.annualRental);
-        const salarySacrificeAnnual = (annualRental + Number(selectedEmployer.adminFee) + Number(selectedEmployer.insuranceFee)) * (1 + vatRate);
-        const salarySacrificeMonthly = salarySacrificeAnnual / 12;
-        const niSavingAnnual = salarySacrificeAnnual * niRate;
-        const pensionSavingAnnual = salarySacrificeAnnual * pensionContributionRate;
-        const taxableSalarySacrifice = Math.max(0, salarySacrificeAnnual - pensionSavingAnnual);
-        const taxSavingAnnual = taxableSalarySacrifice * taxRate;
-        const benefit = benefitRateForVehicle(vehicle);
-        const companyCarTaxAnnual = Number(vehicle.listPrice) * benefit.rate * taxRate;
-        const netAnnual = salarySacrificeAnnual - taxSavingAnnual - niSavingAnnual - pensionSavingAnnual + companyCarTaxAnnual;
-        const nmw = calculateNMWHourlyRate(salarySacrificeAnnual);
-        return {
-          vehicle,
-          annualRental,
-          salarySacrificeAnnual,
-          salarySacrificeMonthly,
-          taxSavingAnnual,
-          niSavingAnnual,
-          pensionSavingAnnual,
-          companyCarTaxAnnual,
-          netAnnual,
-          netMonthly: netAnnual / 12,
-          bikRate: benefit.rate,
-          bikSource: benefit.source,
-          nmwSkipped: nmw.skipped,
-          nmwBlocked: nmw.blocked,
-          nmwHourlyRate: nmw.hourlyRate,
-          nmwMinimumRate: nmw.minimumRate
-        };
-      });
-
-      const saveResponse = await fetch(`${API_BASE_URL}/quotes`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-quote-api-key": quoteApiKey
-        },
-        body: JSON.stringify({
-          quotes: nextResults.map((result) => quoteStoragePayload(result))
-        })
-      });
-      const saveBody = await saveResponse.json();
-      if (!saveResponse.ok) {
-        throw new Error(saveBody.error ?? "The quotes could not be stored.");
-      }
-      const savedQuotes = saveBody.items as Array<{ quoteReference: number; createdAt: string; vehicleId: number }>;
-      const resultsWithReferences = nextResults.map((result) => {
-        const savedQuote = savedQuotes.find((quote) => String(quote.vehicleId) === String(result.vehicle.vehicleId));
-        return {
-          ...result,
-          quoteReference: savedQuote?.quoteReference,
-          quoteCreatedAt: savedQuote?.createdAt
-        };
-      });
-
+      const resultsWithReferences = await calculateAndStoreQuotes(vehicleChoices, false);
       setResults(resultsWithReferences);
       setStatus({ type: "idle" });
       setStep(4);
@@ -1066,6 +1076,50 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       setStatus({
         type: "error",
         message: error instanceof Error ? error.message : "The quote could not be calculated."
+      });
+    }
+  }
+
+  async function loadOfferVehicles() {
+    const allVehicles: Vehicle[] = [];
+    let nextPage = 1;
+    let total = 0;
+    do {
+      const params = new URLSearchParams({
+        isOnOffer: "true",
+        annualMileage: String(annualMileage),
+        limit: "100",
+        page: String(nextPage)
+      });
+      const response = await fetch(`${API_BASE_URL}/vehicles?${params}`, {
+        headers: { "x-quote-api-key": quoteApiKey }
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Could not load Deals/Offers.");
+      allVehicles.push(...(body.items as Vehicle[]));
+      total = Number(body.total ?? allVehicles.length);
+      nextPage += 1;
+    } while (allVehicles.length < total && allVehicles.length < 100);
+    return allVehicles.slice(0, 100);
+  }
+
+  async function calculateOfferQuotes() {
+    setStatus({ type: "loading" });
+    try {
+      const offerVehicles = await loadOfferVehicles();
+      if (offerVehicles.length === 0) {
+        setOfferResults([]);
+        setStatus({ type: "error", message: `There are no Deals/Offers with a rental available at ${annualMileage.toLocaleString("en-GB")} miles per year.` });
+        return;
+      }
+      const resultsWithReferences = await calculateAndStoreQuotes(offerVehicles, true);
+      setOfferResults(resultsWithReferences);
+      setStatus({ type: "idle" });
+      setStep(7);
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "The Deals/Offers could not be calculated."
       });
     }
   }
@@ -1417,6 +1471,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                       className="vehicle-title-button"
                       onClick={() => {
                         setSelectedBreakdownResult(result);
+                        setResultReturnStep(4);
                         setStatus({ type: "idle" });
                         setStep(6);
                       }}
@@ -1457,6 +1512,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                       type="button"
                       onClick={() => {
                         setSelectedOrderResult(result);
+                        setResultReturnStep(4);
                         setStatus({ type: "idle" });
                         setStep(5);
                       }}
@@ -1472,8 +1528,17 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <div className="button-row">
             <button className="secondary-service-button" type="button" onClick={() => setStep(3)}>Back to vehicles</button>
             <button className="service-button no-print" type="button" onClick={() => window.print()}>Save as PDF / Print</button>
+            <button
+              className="secondary-service-button no-print"
+              type="button"
+              disabled={status.type === "loading"}
+              onClick={() => void calculateOfferQuotes()}
+            >
+              {status.type === "loading" ? "Loading Deals/Offers…" : "View Deals/Offers"}
+            </button>
             <button className="service-button" type="button" onClick={() => setStep(1)}>Start again</button>
           </div>
+          {status.type === "error" && <div className="message error">{status.message}</div>}
         </div>
       )}
 
@@ -1587,7 +1652,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           </div>
 
           <div className="button-row">
-            <button className="secondary-service-button" type="button" onClick={() => setStep(4)}>Back to quotes</button>
+            <button className="secondary-service-button" type="button" onClick={() => setStep(resultReturnStep)}>Back to quotes</button>
             <button className="service-button large-email-button" type="submit">Email To Fleet Management</button>
           </div>
         </form>
@@ -1658,7 +1723,93 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           </div>
 
           <div className="button-row">
-            <button className="secondary-service-button" type="button" onClick={() => setStep(4)}>Back to quotes</button>
+            <button className="secondary-service-button" type="button" onClick={() => setStep(resultReturnStep)}>Back to quotes</button>
+          </div>
+        </div>
+      )}
+
+      {step === 7 && (
+        <div>
+          <h2>Deals/Offers salary sacrifice quotes</h2>
+          <p className="form-hint">
+            These Deals/Offers use vehicles currently flagged as on offer and the cheapest available rental at {annualMileage.toLocaleString("en-GB")} miles per year.
+          </p>
+          <button className="service-button no-print" type="button" onClick={() => window.print()}>
+            Save as PDF / Print
+          </button>
+
+          <div className="result-list">
+            {offerResults.map((result) => (
+              <article className="quote-result" key={`${result.vehicle.vehicleId}-${result.quoteReference ?? "offer"}`}>
+                <div>
+                  <h3>
+                    <button
+                      type="button"
+                      className="vehicle-title-button"
+                      onClick={() => {
+                        setSelectedBreakdownResult(result);
+                        setResultReturnStep(7);
+                        setStatus({ type: "idle" });
+                        setStep(6);
+                      }}
+                    >
+                      {result.vehicle.vehicleName}
+                    </button>
+                  </h3>
+                  {result.quoteReference && (
+                    <p className="quote-reference">Quote reference: {result.quoteReference}</p>
+                  )}
+                  <p>Deal/Offer · {result.vehicle.fuelType} · List price {currency(result.vehicle.listPrice)} · BIK {percent(result.bikRate)} ({result.bikSource})</p>
+                </div>
+                {result.nmwBlocked ? (
+                  <div className="message error">
+                    This car would take the estimated hourly rate to {currency(result.nmwHourlyRate ?? 0)}, which is below the National Minimum Wage rate of {currency(result.nmwMinimumRate ?? 0)} for the selected age range.
+                  </div>
+                ) : (
+                  <>
+                    <div className="result-price">
+                      <div>
+                        <span>Monthly salary sacrifice</span>
+                        <strong>{currency(result.salarySacrificeMonthly)}</strong>
+                        <small>per month</small>
+                      </div>
+                      <div>
+                        <span>Estimated monthly cost</span>
+                        <strong>{currency(result.netMonthly)}</strong>
+                        <small>per month</small>
+                      </div>
+                    </div>
+                    {result.nmwSkipped && (
+                      <div className="notice">
+                        Eligibility subject to National Minimum Wage check.
+                      </div>
+                    )}
+                    <button
+                      className="service-button no-print"
+                      type="button"
+                      onClick={() => {
+                        setSelectedOrderResult(result);
+                        setResultReturnStep(7);
+                        setStatus({ type: "idle" });
+                        setStep(5);
+                      }}
+                    >
+                      Select Vehicle
+                    </button>
+                  </>
+                )}
+              </article>
+            ))}
+          </div>
+
+          {offerResults.length === 0 && status.type !== "loading" && (
+            <div className="notice">No Deals/Offers are currently available for the selected annual mileage.</div>
+          )}
+          {status.type === "error" && <div className="message error">{status.message}</div>}
+
+          <div className="button-row">
+            <button className="secondary-service-button" type="button" onClick={() => setStep(4)}>Back to your quotes</button>
+            <button className="service-button no-print" type="button" onClick={() => window.print()}>Save as PDF / Print</button>
           </div>
         </div>
       )}
@@ -1821,6 +1972,7 @@ function storedQuoteAccessRows(quote: StoredQuoteDetail) {
 function storedQuoteVehicleRows(quote: StoredQuoteDetail) {
   return [
     ["Vehicle ID", quote.vehicleId.toString()],
+    ["Deal/Offer quote", quote.isOnOfferQuote ? "Yes" : "No"],
     ["Vehicle name", quote.vehicleName],
     ["Fuel type", quote.fuelType ?? "Not stored"],
     ["List price", currency(quote.listPrice)],
@@ -2448,6 +2600,7 @@ function AdminQuotes({ apiKey }: { apiKey: string }) {
               <th>Created</th>
               <th>Employer</th>
               <th>Vehicle</th>
+              <th>Deal/Offer</th>
               <th>Device</th>
               <th>Browser</th>
               <th>IP address</th>
@@ -2463,6 +2616,7 @@ function AdminQuotes({ apiKey }: { apiKey: string }) {
                 <td>{new Date(quote.createdAt).toLocaleString("en-GB")}</td>
                 <td>{quote.employer ?? "—"}</td>
                 <td>{quote.vehicleName}</td>
+                <td>{quote.isOnOfferQuote ? "Yes" : "No"}</td>
                 <td>{quote.deviceType ?? "—"}</td>
                 <td>{quote.browserName ?? "—"}</td>
                 <td>{quote.clientIpAddress ?? "—"}</td>
@@ -2477,7 +2631,7 @@ function AdminQuotes({ apiKey }: { apiKey: string }) {
               </tr>
             ))}
             {quotes.length === 0 && status.type !== "loading" && (
-              <tr><td colSpan={10}>No stored quotes yet.</td></tr>
+              <tr><td colSpan={11}>No stored quotes yet.</td></tr>
             )}
           </tbody>
         </table>
