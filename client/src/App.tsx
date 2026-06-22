@@ -973,7 +973,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     };
   }
 
-  async function calculateAndStoreQuotes(vehicleChoices: Vehicle[], isOnOfferQuote = false) {
+  async function calculateAndStoreQuotes(vehicleChoices: Vehicle[], isOnOfferQuote = false, storeNMWBlockedQuotes = true) {
     if (!selectedEmployer || !selectedTaxRate || !selectedNI) {
       throw new Error("Some calculator reference data is missing.");
     }
@@ -1034,6 +1034,13 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       };
     });
 
+    const resultsToStore = storeNMWBlockedQuotes
+      ? nextResults
+      : nextResults.filter((result) => !result.nmwBlocked);
+    if (resultsToStore.length === 0) {
+      return [];
+    }
+
     const saveResponse = await fetch(`${API_BASE_URL}/quotes`, {
       method: "POST",
       headers: {
@@ -1041,7 +1048,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         "x-quote-api-key": quoteApiKey
       },
       body: JSON.stringify({
-        quotes: nextResults.map((result) => quoteStoragePayload(result, isOnOfferQuote))
+        quotes: resultsToStore.map((result) => quoteStoragePayload(result, isOnOfferQuote))
       })
     });
     const saveBody = await saveResponse.json();
@@ -1049,7 +1056,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       throw new Error(saveBody.error ?? "The quotes could not be stored.");
     }
     const savedQuotes = saveBody.items as Array<{ quoteReference: number; createdAt: string; vehicleId: number }>;
-    return nextResults.map((result) => {
+    return resultsToStore.map((result) => {
       const savedQuote = savedQuotes.find((quote) => String(quote.vehicleId) === String(result.vehicle.vehicleId));
       return {
         ...result,
@@ -1112,7 +1119,17 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         setStatus({ type: "error", message: `There are no Deals/Offers with a rental available at ${annualMileage.toLocaleString("en-GB")} miles per year.` });
         return;
       }
-      const resultsWithReferences = await calculateAndStoreQuotes(offerVehicles, true);
+      const resultsWithReferences = await calculateAndStoreQuotes(offerVehicles, true, false);
+      if (resultsWithReferences.length === 0) {
+        setOfferResults([]);
+        setStatus({
+          type: "error",
+          message: skipNMW
+            ? `There are no Deals/Offers with a rental available at ${annualMileage.toLocaleString("en-GB")} miles per year.`
+            : "All current Deals/Offers would take the estimated hourly rate below the National Minimum Wage for the details entered."
+        });
+        return;
+      }
       setOfferResults(resultsWithReferences);
       setStatus({ type: "idle" });
       setStep(7);
