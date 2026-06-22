@@ -7,6 +7,7 @@ type Vehicle = {
   fuelType: string;
   co2Emissions: number | null;
   electricRange: number | null;
+  isOnOffer?: boolean;
 };
 
 type VehicleType = {
@@ -1833,6 +1834,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
   const [vehicles, setVehicles] = useState<AdminVehicle[]>([]);
   const [searchText, setSearchText] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
+  const [offerFilter, setOfferFilter] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [selectedVehicle, setSelectedVehicle] = useState<AdminVehicle | null>(null);
@@ -1845,6 +1847,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
     try {
       const params = new URLSearchParams({ limit: String(pageSize), page: String(nextPage) });
       if (search.trim()) params.set("search", search.trim());
+      if (offerFilter) params.set("isOnOffer", offerFilter);
       const response = await fetch(`${API_BASE_URL}/admin/vehicles?${params}`, {
         headers: { "x-admin-api-key": apiKey }
       });
@@ -1856,6 +1859,32 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
       setStatus({ type: "idle" });
     } catch (error) {
       setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not load vehicles" });
+    }
+  }
+
+  async function updateVehicleOffer(vehicle: AdminVehicle, isOnOffer: boolean) {
+    const previousVehicles = vehicles;
+    setVehicles((current) => current.map((item) => (
+      item.vehicleId === vehicle.vehicleId ? { ...item, isOnOffer } : item
+    )));
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/vehicles/${vehicle.vehicleId}`, {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          "x-admin-api-key": apiKey
+        },
+        body: JSON.stringify({ isOnOffer })
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Could not update offer flag");
+      setStatus({ type: "success", message: `${vehicle.vehicleName} ${isOnOffer ? "flagged as on offer" : "removed from offers"}.` });
+      if (offerFilter && offerFilter !== String(isOnOffer)) {
+        await loadVehicles(activeSearch, page);
+      }
+    } catch (error) {
+      setVehicles(previousVehicles);
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not update offer flag" });
     }
   }
 
@@ -2001,6 +2030,42 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
         </div>
       </form>
 
+      <div className="admin-search">
+        <label htmlFor="admin-offer-filter">Filter by offer status</label>
+        <div>
+          <select
+            id="admin-offer-filter"
+            value={offerFilter}
+            onChange={(event) => {
+              const nextOfferFilter = event.target.value;
+              setOfferFilter(nextOfferFilter);
+              setPage(1);
+              setStatus({ type: "loading" });
+              const params = new URLSearchParams({ limit: String(pageSize), page: "1" });
+              if (activeSearch.trim()) params.set("search", activeSearch.trim());
+              if (nextOfferFilter) params.set("isOnOffer", nextOfferFilter);
+              fetch(`${API_BASE_URL}/admin/vehicles?${params}`, {
+                headers: { "x-admin-api-key": apiKey }
+              })
+                .then(async (response) => {
+                  const body = await response.json();
+                  if (!response.ok) throw new Error(body.error ?? "Could not load vehicles");
+                  setVehicles(body.items);
+                  setTotal(body.total);
+                  setStatus({ type: "idle" });
+                })
+                .catch((error) => {
+                  setStatus({ type: "error", message: error instanceof Error ? error.message : "Could not load vehicles" });
+                });
+            }}
+          >
+            <option value="">All vehicles</option>
+            <option value="true">On offer only</option>
+            <option value="false">Not on offer only</option>
+          </select>
+        </div>
+      </div>
+
       {status.type === "error" && <div className="message error">{status.message}</div>}
       {status.type === "success" && <div className="message success">{status.message}</div>}
 
@@ -2008,7 +2073,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
         <p>
           Showing {total === 0 ? 0 : ((page - 1) * pageSize + 1).toLocaleString("en-GB")}
           {" "}to {Math.min(page * pageSize, total).toLocaleString("en-GB")}
-          {" "}of {total.toLocaleString("en-GB")} vehicles{activeSearch ? ` matching “${activeSearch}”` : ""}.
+          {" "}of {total.toLocaleString("en-GB")} vehicles{activeSearch ? ` matching “${activeSearch}”` : ""}{offerFilter ? ` (${offerFilter === "true" ? "on offer" : "not on offer"})` : ""}.
         </p>
         <div>
           <button
@@ -2040,6 +2105,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
               <th>List price</th>
               <th>CO2</th>
               <th>Range</th>
+              <th>On offer</th>
               <th>Rental records</th>
               <th>Actions</th>
             </tr>
@@ -2053,6 +2119,14 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
                 <td>{currency(Number(vehicle.listPrice))}</td>
                 <td>{vehicle.co2Emissions ?? "—"}</td>
                 <td>{vehicle.electricRange ?? "—"}</td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(vehicle.isOnOffer)}
+                    aria-label={`Mark ${vehicle.vehicleName} as on offer`}
+                    onChange={(event) => void updateVehicleOffer(vehicle, event.target.checked)}
+                  />
+                </td>
                 <td>{vehicle.rentalCount}</td>
                 <td>
                   <div className="table-actions">
@@ -2063,7 +2137,7 @@ function AdminVehicles({ apiKey }: { apiKey: string }) {
               </tr>
             ))}
             {vehicles.length === 0 && status.type !== "loading" && (
-              <tr><td colSpan={8}>No matching vehicles found.</td></tr>
+              <tr><td colSpan={9}>No matching vehicles found.</td></tr>
             )}
           </tbody>
         </table>
