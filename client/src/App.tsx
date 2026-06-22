@@ -476,21 +476,28 @@ function VehiclePicker({
   const [listOpen, setListOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const pickerRef = useRef<HTMLDivElement | null>(null);
   const resultsListRef = useRef<HTMLDivElement | null>(null);
-
-  function scrollVehicleResults(direction: "up" | "down") {
-    const list = resultsListRef.current;
-    if (!list) return;
-    list.scrollBy({
-      top: direction === "down" ? Math.round(list.clientHeight * 0.85) : -Math.round(list.clientHeight * 0.85),
-      behavior: "smooth"
-    });
-  }
 
   useEffect(() => {
     setPage(1);
     setResults([]);
   }, [query, vehicleType, maxMonthlyCost, annualMileage]);
+
+  useEffect(() => {
+    if (!listOpen) return;
+    function closeWhenClickingOutside(event: MouseEvent | TouchEvent) {
+      const target = event.target;
+      if (target instanceof Node && pickerRef.current?.contains(target)) return;
+      setListOpen(false);
+    }
+    document.addEventListener("mousedown", closeWhenClickingOutside);
+    document.addEventListener("touchstart", closeWhenClickingOutside);
+    return () => {
+      document.removeEventListener("mousedown", closeWhenClickingOutside);
+      document.removeEventListener("touchstart", closeWhenClickingOutside);
+    };
+  }, [listOpen]);
 
   useEffect(() => {
     if (!listOpen || value) {
@@ -542,7 +549,7 @@ function VehiclePicker({
   }, [query, value, vehicleType, maxMonthlyCost, annualMileage, costFilter.adminFee, costFilter.insuranceFee, costFilter.taxRate, costFilter.niRate, costFilter.pensionRate, costFilter.vatRate, excludedIds.join(","), listOpen, page]);
 
   return (
-    <div className="vehicle-picker">
+    <div className="vehicle-picker" ref={pickerRef}>
       <label htmlFor={`vehicle-${index}`}>Vehicle choice {index + 1}{index === 0 ? " *" : ""}</label>
       {value ? (
         <div className="selected-vehicle">
@@ -600,33 +607,10 @@ function VehiclePicker({
                 {searching && results.length > 0 && (
                   <div className="search-results-summary">Loading more vehicles…</div>
                 )}
-                {!searching && results.length === 0 && (
-                  <div className="search-results-summary">No matching vehicles found.</div>
-                )}
-              </div>
-              {results.length > 5 && (
-                <div className="vehicle-scroll-controls" aria-label="Vehicle list scroll controls">
-                  <button
-                    type="button"
-                    className="vehicle-scroll-button"
-                    aria-label="Scroll vehicle list up"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => scrollVehicleResults("up")}
-                  >
-                    ↑
-                  </button>
-                  <div className="vehicle-scroll-track" aria-hidden="true" />
-                  <button
-                    type="button"
-                    className="vehicle-scroll-button"
-                    aria-label="Scroll vehicle list down"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => scrollVehicleResults("down")}
-                  >
-                    ↓
-                  </button>
-                </div>
+              {!searching && results.length === 0 && (
+                <div className="search-results-summary">No matching vehicles found.</div>
               )}
+            </div>
             </div>
           )}
         </>

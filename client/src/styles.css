@@ -340,7 +340,6 @@ button:focus {
   scrollbar-gutter: stable;
   scrollbar-color: var(--nhs-blue) #e5e5e5;
   scrollbar-width: auto;
-  padding-right: 42px;
 }
 .search-results::-webkit-scrollbar {
   width: 18px;
@@ -356,40 +355,6 @@ button:focus {
 }
 .search-results::-webkit-scrollbar-thumb:hover {
   background: var(--nhs-dark-blue);
-}
-.vehicle-scroll-controls {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  bottom: 8px;
-  width: 32px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  pointer-events: none;
-}
-.vehicle-scroll-button {
-  width: 32px;
-  min-height: 42px;
-  border: 2px solid var(--nhs-blue);
-  background: var(--nhs-blue);
-  color: #fff;
-  font-size: 20px;
-  font-weight: 700;
-  cursor: pointer;
-  pointer-events: auto;
-  padding: 0;
-  line-height: 1;
-}
-.vehicle-scroll-button:hover {
-  background: var(--nhs-dark-blue);
-}
-.vehicle-scroll-track {
-  flex: 1;
-  border: 2px solid #768692;
-  background: rgba(216, 221, 224, .92);
-  pointer-events: none;
 }
 .search-results-summary {
   position: sticky;
