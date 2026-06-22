@@ -178,7 +178,7 @@ type AdminTableConfig = {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ?? "https://1g0vserusc.execute-api.eu-west-2.amazonaws.com";
-const APP_BUILD = "2026-06-21-results-v2";
+const APP_BUILD = "2026-06-22-tax-estimator";
 const FLEET_MANAGEMENT_EMAIL = "fleet.management@swyt.nhs.uk";
 
 function BrandHeader() {
@@ -357,6 +357,69 @@ function afcLabel(rate: AgendaForChangePayRate) {
 
 function incomeTaxLabel(rate: IncomeTaxRate) {
   return `${rate.taxBand} (${percent(rate.taxRate)})`;
+}
+
+function parseCurrencyInput(value: string) {
+  return Number(value.replace(/[£,\s]/g, ""));
+}
+
+function currentTaxYearFraction() {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const taxYearStartThisYear = new Date(currentYear, 3, 6);
+  const taxYearStart = today >= taxYearStartThisYear
+    ? taxYearStartThisYear
+    : new Date(currentYear - 1, 3, 6);
+  const nextTaxYearStart = new Date(taxYearStart.getFullYear() + 1, 3, 6);
+  const elapsed = Math.max(1, today.getTime() - taxYearStart.getTime());
+  const fullYear = nextTaxYearStart.getTime() - taxYearStart.getTime();
+  return Math.min(1, Math.max(1 / 365, elapsed / fullYear));
+}
+
+function allowanceFromTaxCode(taxCode: string) {
+  const code = taxCode.trim().toUpperCase().replace(/\s+/g, "");
+  if (!code) return { allowance: 12570, note: "No tax code entered, so the standard 1257L allowance has been assumed." };
+  if (code === "BR") return { allowance: 0, forcedRate: 0.2, note: "BR tax codes normally mean all pay is taxed at 20%." };
+  if (code === "D0") return { allowance: 0, forcedRate: 0.4, note: "D0 tax codes normally mean all pay is taxed at 40%." };
+  if (code === "D1") return { allowance: 0, forcedRate: 0.45, note: "D1 tax codes normally mean all pay is taxed at 45%." };
+  if (code === "NT") return { allowance: 0, forcedRate: 0, note: "NT tax codes usually mean no tax is deducted. Please check this with Payroll." };
+  const digits = code.match(/\d+/)?.[0];
+  if (!digits) return { allowance: 12570, note: "The tax code could not be read, so the standard 1257L allowance has been assumed." };
+  const allowance = Number(digits) * 10;
+  if (code.startsWith("K")) {
+    return { allowance: 0, note: "K tax codes are more complex. This estimate treats the personal allowance as £0, so please check the result carefully." };
+  }
+  return { allowance, note: `Estimated personal allowance from tax code ${code}: ${currency(allowance)}.` };
+}
+
+function estimateTaxBand(taxCode: string, yearToDateTaxablePay: string, yearToDateTaxPaid: string) {
+  const taxablePay = parseCurrencyInput(yearToDateTaxablePay);
+  const taxPaid = parseCurrencyInput(yearToDateTaxPaid);
+  if (!Number.isFinite(taxablePay) || taxablePay <= 0) return null;
+  if (!Number.isFinite(taxPaid) || taxPaid < 0) return null;
+
+  const taxCodeDetails = allowanceFromTaxCode(taxCode);
+  const fraction = currentTaxYearFraction();
+  const estimatedAnnualTaxablePay = taxablePay / fraction;
+  const estimatedAnnualTaxPaid = taxPaid / fraction;
+  const basicRateLimit = Number(taxCodeDetails.allowance) + 37700;
+
+  let estimatedRate = taxCodeDetails.forcedRate ?? 0.2;
+  if (taxCodeDetails.forcedRate === undefined) {
+    if (estimatedAnnualTaxablePay > 125140) {
+      estimatedRate = 0.45;
+    } else if (estimatedAnnualTaxablePay > basicRateLimit) {
+      estimatedRate = 0.4;
+    }
+  }
+
+  return {
+    estimatedRate,
+    taxCodeNote: taxCodeDetails.note,
+    estimatedAnnualTaxablePay,
+    estimatedAnnualTaxPaid,
+    effectiveTaxRateToDate: taxablePay > 0 ? taxPaid / taxablePay : 0
+  };
 }
 
 function isElectricHybrid(vehicle: Vehicle) {
@@ -1066,6 +1129,12 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
           <div className="question-block">
             <label htmlFor="income-tax">What level of income tax do you pay?</label>
+            <p className="field-hint">
+              Not sure?{" "}
+              <a href="#tax-estimator" target="_blank" rel="noopener noreferrer">
+                Estimate your tax rate using your payslip
+              </a>.
+            </p>
             <select id="income-tax" value={taxBand} onChange={(event) => setTaxBand(event.target.value)} required>
               {incomeTaxRates.map((rate) => (
                 <option key={rate.taxBand} value={rate.taxBand}>{incomeTaxLabel(rate)}</option>
@@ -2504,9 +2573,113 @@ function AdminTable({ config, apiKey }: { config: AdminTableConfig; apiKey: stri
   );
 }
 
+function TaxEstimatorPage() {
+  const [taxCode, setTaxCode] = useState("");
+  const [yearToDateTaxablePay, setYearToDateTaxablePay] = useState("");
+  const [yearToDateTaxPaid, setYearToDateTaxPaid] = useState("");
+  const estimate = estimateTaxBand(taxCode, yearToDateTaxablePay, yearToDateTaxPaid);
+
+  return (
+    <>
+      <main>
+        <section className="intro">
+          <BrandHeader />
+          <h1>Tax rate estimator</h1>
+          <p>Use figures from your payslip to estimate whether you are likely to pay tax at 20%, 40%, or 45%.</p>
+        </section>
+
+        <section className="service-panel tax-estimator">
+          <h2>Estimate your tax rate</h2>
+          <p className="form-hint">
+            Your tax code shows on your payslip. The year-to-date taxable pay and tax paid figures usually show in the bottom left-hand corner of your payslip.
+          </p>
+          <div className="notice">
+            This is an estimate only. Your actual tax position can be affected by tax-code changes, previous employments, benefits, arrears, and payroll adjustments.
+          </div>
+
+          <div className="question-block">
+            <label htmlFor="estimator-tax-code">Tax code</label>
+            <input
+              id="estimator-tax-code"
+              value={taxCode}
+              onChange={(event) => setTaxCode(event.target.value)}
+              placeholder="For example 1257L"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="question-block">
+            <label htmlFor="estimator-taxable-pay">Year-to-date taxable pay</label>
+            <input
+              id="estimator-taxable-pay"
+              value={yearToDateTaxablePay}
+              onChange={(event) => setYearToDateTaxablePay(event.target.value)}
+              placeholder="For example 12500.00"
+              inputMode="decimal"
+            />
+          </div>
+
+          <div className="question-block">
+            <label htmlFor="estimator-tax-paid">Year-to-date tax paid</label>
+            <input
+              id="estimator-tax-paid"
+              value={yearToDateTaxPaid}
+              onChange={(event) => setYearToDateTaxPaid(event.target.value)}
+              placeholder="For example 1600.00"
+              inputMode="decimal"
+            />
+          </div>
+
+          {estimate ? (
+            <div className="estimator-result">
+              <h3>Estimated tax rate</h3>
+              <div className="estimator-rate">{percent(estimate.estimatedRate)}</div>
+              <p>
+                Use the {percent(estimate.estimatedRate)} income tax option in CARculator unless your Payroll team or HMRC tells you otherwise.
+              </p>
+              <dl>
+                <div>
+                  <dt>Estimated annual taxable pay</dt>
+                  <dd>{currency(estimate.estimatedAnnualTaxablePay)}</dd>
+                </div>
+                <div>
+                  <dt>Estimated annual tax paid</dt>
+                  <dd>{currency(estimate.estimatedAnnualTaxPaid)}</dd>
+                </div>
+                <div>
+                  <dt>Tax paid as a percentage of taxable pay to date</dt>
+                  <dd>{percent(estimate.effectiveTaxRateToDate)}</dd>
+                </div>
+                <div>
+                  <dt>Tax code note</dt>
+                  <dd>{estimate.taxCodeNote}</dd>
+                </div>
+              </dl>
+            </div>
+          ) : (
+            <p className="loading-note">Enter your tax code, year-to-date taxable pay, and year-to-date tax paid to see an estimate.</p>
+          )}
+
+          <div className="button-row">
+            <button className="service-button" type="button" onClick={() => window.close()}>
+              Close this window
+            </button>
+            <a className="secondary-service-link" href="#quote">Back to CARculator</a>
+          </div>
+        </section>
+      </main>
+      <CopyrightFooter />
+    </>
+  );
+}
+
 export function App() {
-  const [view, setView] = useState<"quote" | "admin">(
-    window.location.hash === "#admin" ? "admin" : "quote"
+  const [view, setView] = useState<"quote" | "admin" | "tax-estimator">(
+    window.location.hash === "#admin"
+      ? "admin"
+      : window.location.hash === "#tax-estimator"
+        ? "tax-estimator"
+        : "quote"
   );
   const [quoteApiKey, setQuoteApiKey] = useState(
     () => window.sessionStorage.getItem("lease-car-quote-key") ?? ""
@@ -2517,7 +2690,13 @@ export function App() {
 
   useEffect(() => {
     function updateViewFromHash() {
-      setView(window.location.hash === "#admin" ? "admin" : "quote");
+      setView(
+        window.location.hash === "#admin"
+          ? "admin"
+          : window.location.hash === "#tax-estimator"
+            ? "tax-estimator"
+            : "quote"
+      );
     }
     window.addEventListener("hashchange", updateViewFromHash);
     return () => window.removeEventListener("hashchange", updateViewFromHash);
@@ -2562,6 +2741,10 @@ export function App() {
         <CopyrightFooter />
       </>
     );
+  }
+
+  if (view === "tax-estimator") {
+    return <TaxEstimatorPage />;
   }
 
   if (!quoteApiKey) {

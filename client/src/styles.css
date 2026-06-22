@@ -272,6 +272,19 @@ button:focus {
   cursor: pointer;
   padding: 10px 16px;
 }
+.secondary-service-link {
+  display: inline-block;
+  border: 2px solid var(--nhs-blue);
+  background: #fff;
+  color: var(--nhs-blue);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 10px 16px;
+  text-decoration: none;
+}
+.secondary-service-link:hover {
+  background: var(--nhs-light-blue);
+}
 .button-row {
   display: flex;
   flex-wrap: wrap;
@@ -450,6 +463,41 @@ button:focus {
   color: #0b0c0c;
   font-size: 36px;
   line-height: 1.05;
+}
+.tax-estimator .notice {
+  margin-top: 18px;
+}
+.estimator-result {
+  border-left: 6px solid var(--nhs-blue);
+  background: var(--nhs-light-blue);
+  margin-top: 28px;
+  padding: 20px;
+}
+.estimator-rate {
+  color: #0b0c0c;
+  font-size: 54px;
+  font-weight: 700;
+  line-height: 1;
+  margin: 8px 0 12px;
+}
+.estimator-result dl {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+.estimator-result dl > div {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 1.4fr);
+  gap: 16px;
+  border-top: 1px solid #b8d3ed;
+  padding-top: 10px;
+}
+.estimator-result dt {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.estimator-result dd {
+  margin: 0;
 }
 .fleet-email-panel {
   margin-top: 22px;
