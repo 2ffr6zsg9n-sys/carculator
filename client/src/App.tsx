@@ -327,6 +327,7 @@ const adminTables: AdminTableConfig[] = [
 ];
 
 const mileageOptions = [6000, 8000, 10000, 12000, 15000];
+const monthlyCostOptions = Array.from({ length: 16 }, (_, index) => 250 + index * 50);
 
 function currency(value: number) {
   return value.toLocaleString("en-GB", {
@@ -369,7 +370,9 @@ function VehiclePicker({
   onChange,
   excludedIds,
   vehicleType,
+  maxMonthlyCost,
   annualMileage,
+  costFilter,
   quoteApiKey
 }: {
   index: number;
@@ -377,7 +380,16 @@ function VehiclePicker({
   onChange: (vehicle: Vehicle | null) => void;
   excludedIds: string[];
   vehicleType: string;
+  maxMonthlyCost: string;
   annualMileage: number;
+  costFilter: {
+    adminFee: number;
+    insuranceFee: number;
+    taxRate: number;
+    niRate: number;
+    pensionRate: number;
+    vatRate: number;
+  };
   quoteApiKey: string;
 }) {
   const [query, setQuery] = useState("");
@@ -390,7 +402,7 @@ function VehiclePicker({
   useEffect(() => {
     setPage(1);
     setResults([]);
-  }, [query, vehicleType, annualMileage]);
+  }, [query, vehicleType, maxMonthlyCost, annualMileage]);
 
   useEffect(() => {
     if (!listOpen || value) {
@@ -408,6 +420,13 @@ function VehiclePicker({
         });
         if (vehicleType) params.set("fuelType", vehicleType);
         params.set("annualMileage", String(annualMileage));
+        if (maxMonthlyCost) params.set("maxMonthlyCost", maxMonthlyCost);
+        params.set("adminFee", String(costFilter.adminFee));
+        params.set("insuranceFee", String(costFilter.insuranceFee));
+        params.set("taxRate", String(costFilter.taxRate));
+        params.set("niRate", String(costFilter.niRate));
+        params.set("pensionRate", String(costFilter.pensionRate));
+        params.set("vatRate", String(costFilter.vatRate));
         const response = await fetch(`${API_BASE_URL}/vehicles?${params}`, {
           signal: controller.signal,
           headers: { "x-quote-api-key": quoteApiKey }
@@ -432,7 +451,7 @@ function VehiclePicker({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [query, value, vehicleType, annualMileage, excludedIds.join(","), listOpen, page]);
+  }, [query, value, vehicleType, maxMonthlyCost, annualMileage, costFilter.adminFee, costFilter.insuranceFee, costFilter.taxRate, costFilter.niRate, costFilter.pensionRate, costFilter.vatRate, excludedIds.join(","), listOpen, page]);
 
   return (
     <div className="vehicle-picker">
@@ -526,6 +545,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [wholeTimeHours, setWholeTimeHours] = useState("37.5");
   const [annualMileage, setAnnualMileage] = useState(6000);
   const [vehicleType, setVehicleType] = useState("");
+  const [maxMonthlyCost, setMaxMonthlyCost] = useState("");
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
   const [results, setResults] = useState<QuoteResult[]>([]);
   const [selectedOrderResult, setSelectedOrderResult] = useState<QuoteResult | null>(null);
@@ -600,6 +620,21 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const selectedAFCPayRate = agendaForChangePayRates.find((rate) => String(rate.afcPayRateId) === afcPayRateId);
   const selectedNI = niRates[0];
   const selectedIds = vehicles.filter((vehicle): vehicle is Vehicle => vehicle !== null).map((vehicle) => vehicle.vehicleId);
+  const selectedTaxRateValue = normaliseRate(selectedTaxRate?.taxRate ?? 0);
+  const selectedNIRateValue = selectedTaxRateValue >= 0.4
+    ? normaliseRate(selectedNI?.employeeRateUpper ?? 0)
+    : normaliseRate(selectedNI?.employeeRateLower ?? 0);
+  const selectedPensionRateValue = paysPension === "yes" && selectedPensionRate
+    ? normaliseRate(selectedPensionRate.contributionPercentage)
+    : 0;
+  const vehicleCostFilter = {
+    adminFee: Number(selectedEmployer?.adminFee ?? 0),
+    insuranceFee: Number(selectedEmployer?.insuranceFee ?? 0),
+    taxRate: selectedTaxRateValue,
+    niRate: selectedNIRateValue,
+    pensionRate: selectedPensionRateValue,
+    vatRate: normaliseRate(selectedNI?.vatRate ?? 0)
+  };
 
   function updateVehicle(index: number, vehicle: Vehicle | null) {
     setVehicles((current) => current.map((item, itemIndex) => itemIndex === index ? vehicle : item));
@@ -1234,6 +1269,22 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             </select>
           </div>
 
+          <div className="filter-field">
+            <label htmlFor="maximum-monthly-cost">Maximum estimated monthly cost <span>(optional)</span></label>
+            <select
+              id="maximum-monthly-cost"
+              value={maxMonthlyCost}
+              onChange={(event) => setMaxMonthlyCost(event.target.value)}
+            >
+              <option value="">No maximum</option>
+              {monthlyCostOptions.map((amount) => (
+                <option key={amount} value={amount}>
+                  Up to {currency(amount)} per month
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="vehicle-grid">
             {vehicles.map((vehicle, index) => (
               <VehiclePicker
@@ -1243,7 +1294,9 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                 onChange={(nextVehicle) => updateVehicle(index, nextVehicle)}
                 excludedIds={selectedIds.filter((id) => id !== vehicle?.vehicleId)}
                 vehicleType={vehicleType}
+                maxMonthlyCost={maxMonthlyCost}
                 annualMileage={annualMileage}
+                costFilter={vehicleCostFilter}
                 quoteApiKey={quoteApiKey}
               />
             ))}
