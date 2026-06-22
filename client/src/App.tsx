@@ -1251,7 +1251,9 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       {step === 3 && (
         <div>
           <h2>Choose up to 5 cars</h2>
-          <p className="form-hint">Only vehicles with a rental available at {annualMileage.toLocaleString("en-GB")} miles per year are shown.</p>
+          <p className="form-hint">
+            Please select up to 5 vehicles to compare the prices for. If required, filter this list by fuel type or estimated monthly cost using the first drop-down lists below.
+          </p>
 
           <div className="filter-field">
             <label htmlFor="vehicle-type">Fuel type <span>(optional)</span></label>
