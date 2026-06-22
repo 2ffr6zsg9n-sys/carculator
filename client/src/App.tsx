@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Vehicle = {
   vehicleId: string;
@@ -476,6 +476,16 @@ function VehiclePicker({
   const [listOpen, setListOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const resultsListRef = useRef<HTMLDivElement | null>(null);
+
+  function scrollVehicleResults(direction: "up" | "down") {
+    const list = resultsListRef.current;
+    if (!list) return;
+    list.scrollBy({
+      top: direction === "down" ? Math.round(list.clientHeight * 0.85) : -Math.round(list.clientHeight * 0.85),
+      behavior: "smooth"
+    });
+  }
 
   useEffect(() => {
     setPage(1);
@@ -555,41 +565,67 @@ function VehiclePicker({
             autoComplete="off"
           />
           {listOpen && (
-            <div
-              className="search-results"
-              onScroll={(event) => {
-                const list = event.currentTarget;
-                const nearBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 80;
-                if (nearBottom && !searching && page * 100 < total) {
-                  setPage((current) => current + 1);
-                }
-              }}
-            >
-              <div className="search-results-summary">
-                {searching && results.length === 0
-                  ? "Loading vehicles…"
-                  : `${total.toLocaleString("en-GB")} vehicle${total === 1 ? "" : "s"} available`}
+            <div className="vehicle-results-panel">
+              <div
+                ref={resultsListRef}
+                className="search-results"
+                onScroll={(event) => {
+                  const list = event.currentTarget;
+                  const nearBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 80;
+                  if (nearBottom && !searching && page * 100 < total) {
+                    setPage((current) => current + 1);
+                  }
+                }}
+              >
+                <div className="search-results-summary">
+                  {searching && results.length === 0
+                    ? "Loading vehicles…"
+                    : `${total.toLocaleString("en-GB")} vehicle${total === 1 ? "" : "s"} available`}
+                </div>
+                {results.map((vehicle) => (
+                  <button
+                    type="button"
+                    key={vehicle.vehicleId}
+                    onClick={() => {
+                      onChange(vehicle);
+                      setQuery("");
+                      setResults([]);
+                      setListOpen(false);
+                    }}
+                  >
+                    <strong>{vehicle.vehicleName}</strong>
+                    <span>{vehicle.fuelType} · £{vehicle.listPrice.toLocaleString("en-GB")}</span>
+                  </button>
+                ))}
+                {searching && results.length > 0 && (
+                  <div className="search-results-summary">Loading more vehicles…</div>
+                )}
+                {!searching && results.length === 0 && (
+                  <div className="search-results-summary">No matching vehicles found.</div>
+                )}
               </div>
-              {results.map((vehicle) => (
-                <button
-                  type="button"
-                  key={vehicle.vehicleId}
-                  onClick={() => {
-                    onChange(vehicle);
-                    setQuery("");
-                    setResults([]);
-                    setListOpen(false);
-                  }}
-                >
-                  <strong>{vehicle.vehicleName}</strong>
-                  <span>{vehicle.fuelType} · £{vehicle.listPrice.toLocaleString("en-GB")}</span>
-                </button>
-              ))}
-              {searching && results.length > 0 && (
-                <div className="search-results-summary">Loading more vehicles…</div>
-              )}
-              {!searching && results.length === 0 && (
-                <div className="search-results-summary">No matching vehicles found.</div>
+              {results.length > 5 && (
+                <div className="vehicle-scroll-controls" aria-label="Vehicle list scroll controls">
+                  <button
+                    type="button"
+                    className="vehicle-scroll-button"
+                    aria-label="Scroll vehicle list up"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => scrollVehicleResults("up")}
+                  >
+                    ↑
+                  </button>
+                  <div className="vehicle-scroll-track" aria-hidden="true" />
+                  <button
+                    type="button"
+                    className="vehicle-scroll-button"
+                    aria-label="Scroll vehicle list down"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => scrollVehicleResults("down")}
+                  >
+                    ↓
+                  </button>
+                </div>
               )}
             </div>
           )}
