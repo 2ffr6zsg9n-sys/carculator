@@ -400,15 +400,18 @@ function estimateTaxBand(taxCode: string, yearToDateTaxablePay: string, yearToDa
 
   const taxCodeDetails = allowanceFromTaxCode(taxCode);
   const fraction = currentTaxYearFraction();
+  const allowanceUsedToDate = Number(taxCodeDetails.allowance) * fraction;
+  const taxablePayAfterAllowance = Math.max(0, taxablePay - allowanceUsedToDate);
+  const effectiveTaxedPayRate = taxablePayAfterAllowance > 0 ? taxPaid / taxablePayAfterAllowance : 0;
   const estimatedAnnualTaxablePay = taxablePay / fraction;
+  const estimatedAnnualTaxedPay = taxablePayAfterAllowance / fraction;
   const estimatedAnnualTaxPaid = taxPaid / fraction;
-  const basicRateLimit = Number(taxCodeDetails.allowance) + 37700;
 
   let estimatedRate = taxCodeDetails.forcedRate ?? 0.2;
   if (taxCodeDetails.forcedRate === undefined) {
-    if (estimatedAnnualTaxablePay > 125140) {
+    if (estimatedAnnualTaxablePay > 125140 || effectiveTaxedPayRate >= 0.42) {
       estimatedRate = 0.45;
-    } else if (estimatedAnnualTaxablePay > basicRateLimit) {
+    } else if (estimatedAnnualTaxedPay > 37700 || effectiveTaxedPayRate > 0.22) {
       estimatedRate = 0.4;
     }
   }
@@ -416,9 +419,13 @@ function estimateTaxBand(taxCode: string, yearToDateTaxablePay: string, yearToDa
   return {
     estimatedRate,
     taxCodeNote: taxCodeDetails.note,
+    allowanceUsedToDate,
+    taxablePayAfterAllowance,
     estimatedAnnualTaxablePay,
+    estimatedAnnualTaxedPay,
     estimatedAnnualTaxPaid,
-    effectiveTaxRateToDate: taxablePay > 0 ? taxPaid / taxablePay : 0
+    effectiveTaxRateToDate: taxablePay > 0 ? taxPaid / taxablePay : 0,
+    effectiveTaxedPayRate
   };
 }
 
@@ -2643,12 +2650,28 @@ function TaxEstimatorPage() {
                   <dd>{currency(estimate.estimatedAnnualTaxablePay)}</dd>
                 </div>
                 <div>
+                  <dt>Personal allowance used to date</dt>
+                  <dd>{currency(estimate.allowanceUsedToDate)}</dd>
+                </div>
+                <div>
+                  <dt>Taxable pay after allowance to date</dt>
+                  <dd>{currency(estimate.taxablePayAfterAllowance)}</dd>
+                </div>
+                <div>
+                  <dt>Estimated annual taxable pay after allowance</dt>
+                  <dd>{currency(estimate.estimatedAnnualTaxedPay)}</dd>
+                </div>
+                <div>
                   <dt>Estimated annual tax paid</dt>
                   <dd>{currency(estimate.estimatedAnnualTaxPaid)}</dd>
                 </div>
                 <div>
                   <dt>Tax paid as a percentage of taxable pay to date</dt>
                   <dd>{percent(estimate.effectiveTaxRateToDate)}</dd>
+                </div>
+                <div>
+                  <dt>Tax paid as a percentage of taxable pay after allowance</dt>
+                  <dd>{percent(estimate.effectiveTaxedPayRate)}</dd>
                 </div>
                 <div>
                   <dt>Tax code note</dt>
