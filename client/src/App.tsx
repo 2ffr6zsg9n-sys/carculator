@@ -214,7 +214,7 @@ function PrivacyNotice() {
       </p>
       <p>
         If you choose “Remember my details on this device”, your calculator choices are saved only in this browser on this device.
-        They are not sent to or stored in the CARculator database for this purpose. Do not use this option on a shared device.
+        They are not sent to or stored in the CARculator database for this purpose.
       </p>
     </div>
   );
