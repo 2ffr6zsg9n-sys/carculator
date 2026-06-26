@@ -200,7 +200,7 @@ type AdminTableConfig = {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ?? "https://1g0vserusc.execute-api.eu-west-2.amazonaws.com";
-const APP_BUILD = "2026-06-22-tax-estimator";
+const APP_BUILD = "2026-06-26-saved-quotes";
 const FLEET_MANAGEMENT_EMAIL = "fleet.management@swyt.nhs.uk";
 
 function BrandHeader() {
@@ -832,6 +832,12 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     replacementRegistration: ""
   });
   const [status, setStatus] = useState<{ type: "idle" | "loading" | "error"; message?: string }>({ type: "loading" });
+
+  useEffect(() => {
+    if ([4, 5, 6, 7, 8].includes(step)) {
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    }
+  }, [step]);
 
   useEffect(() => {
     async function loadReferenceData() {
@@ -1487,6 +1493,22 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             </span>
           )
         ))}
+        {browserSavedQuotes.length > 0 && (
+          step === 8 ? (
+            <span className="current">5. Saved quotes</span>
+          ) : (
+            <button
+              type="button"
+              className="completed"
+              onClick={() => {
+                setStatus({ type: "idle" });
+                setStep(8);
+              }}
+            >
+              5. Saved quotes
+            </button>
+          )
+        )}
       </div>
 
       {step === 1 && (
@@ -1496,6 +1518,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           {browserSavedQuotes.length > 0 && (
             <div className="notice">
               <p>You have {browserSavedQuotes.length.toLocaleString("en-GB")} quote{browserSavedQuotes.length === 1 ? "" : "s"} saved in this browser from the last month.</p>
+              <p>Do not use this option on a shared device.</p>
               <button className="secondary-service-button" type="button" onClick={() => setStep(8)}>
                 View saved quotes
               </button>
@@ -1798,9 +1821,19 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <p className="form-hint">
             These estimates use the cheapest available rental for each selected vehicle at {annualMileage.toLocaleString("en-GB")} miles per year.
           </p>
-          <button className="service-button no-print" type="button" onClick={() => window.print()}>
-            Save as PDF / Print
-          </button>
+          <div className="button-row no-print">
+            <button className="service-button" type="button" onClick={() => window.print()}>
+              Save as PDF / Print
+            </button>
+            <button
+              className="service-button"
+              type="button"
+              disabled={status.type === "loading"}
+              onClick={() => void calculateOfferQuotes()}
+            >
+              {status.type === "loading" ? "Loading Deals/Offers…" : "View Deals/Offers"}
+            </button>
+          </div>
 
           <div className="result-list">
             {results.map((result) => (
@@ -1875,7 +1908,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
               </button>
             )}
             <button
-              className="secondary-service-button no-print"
+              className="service-button no-print"
               type="button"
               disabled={status.type === "loading"}
               onClick={() => void calculateOfferQuotes()}
@@ -2174,6 +2207,9 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <p className="form-hint">
             These quotes are stored only in this browser. Quotes are kept for up to one month and the most recent {maxBrowserSavedQuotes} are retained.
           </p>
+          <div className="notice">
+            Do not use this option on a shared device. If you no longer want quotes stored in this browser, use “Clear all saved quotes”.
+          </div>
 
           <div className="result-list">
             {browserSavedQuotes.map((quote) => (
