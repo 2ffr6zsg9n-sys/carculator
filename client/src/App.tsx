@@ -111,6 +111,25 @@ type QuoteResult = {
   nmwMinimumRate: number | null;
 };
 
+type BrowserSavedQuote = {
+  savedQuoteId: string;
+  quoteReference?: number;
+  quoteCreatedAt?: string;
+  savedAt: string;
+  vehicleId: string;
+  vehicleName: string;
+  fuelType: string;
+  listPrice: number;
+  annualRental: number;
+  co2Emissions: number | null;
+  electricRange: number | null;
+  annualMileage: number;
+  salarySacrificeMonthly: number;
+  netMonthly: number;
+  isOnOfferQuote: boolean;
+  nmwSkipped: boolean;
+};
+
 type StoredQuoteSummary = {
   quoteReference: number;
   createdAt: string;
@@ -221,6 +240,9 @@ function PrivacyNotice() {
 }
 
 const rememberedDetailsKey = "carculator-remembered-details-v1";
+const browserSavedQuotesKey = "carculator-browser-saved-quotes-v1";
+const maxBrowserSavedQuotes = 100;
+const browserSavedQuoteMaxAgeMs = 31 * 24 * 60 * 60 * 1000;
 
 type RememberedQuoteDetails = {
   quoteApiKey?: string;
@@ -262,6 +284,106 @@ function readRememberedQuoteDetails(): RememberedQuoteDetails | null {
   } catch {
     return null;
   }
+}
+
+function readBrowserSavedQuotes(): BrowserSavedQuote[] {
+  try {
+    const stored = window.localStorage.getItem(browserSavedQuotesKey);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+    const newestAllowedSavedAt = Date.now() - browserSavedQuoteMaxAgeMs;
+    const quotes = parsed
+      .map((quote): BrowserSavedQuote | null => {
+        if (!quote || typeof quote !== "object") return null;
+        const savedAt = typeof quote.savedAt === "string" ? quote.savedAt : new Date().toISOString();
+        return {
+          savedQuoteId: String(quote.savedQuoteId ?? quote.quoteReference ?? `${quote.vehicleId ?? ""}-${savedAt}`),
+          quoteReference: Number.isFinite(Number(quote.quoteReference)) ? Number(quote.quoteReference) : undefined,
+          quoteCreatedAt: typeof quote.quoteCreatedAt === "string" ? quote.quoteCreatedAt : undefined,
+          savedAt,
+          vehicleId: String(quote.vehicleId ?? ""),
+          vehicleName: String(quote.vehicleName ?? ""),
+          fuelType: String(quote.fuelType ?? ""),
+          listPrice: Number(quote.listPrice) || 0,
+          annualRental: Number(quote.annualRental) || 0,
+          co2Emissions: quote.co2Emissions === null || quote.co2Emissions === undefined ? null : Number(quote.co2Emissions),
+          electricRange: quote.electricRange === null || quote.electricRange === undefined ? null : Number(quote.electricRange),
+          annualMileage: Number(quote.annualMileage) || 0,
+          salarySacrificeMonthly: Number(quote.salarySacrificeMonthly) || 0,
+          netMonthly: Number(quote.netMonthly) || 0,
+          isOnOfferQuote: Boolean(quote.isOnOfferQuote),
+          nmwSkipped: Boolean(quote.nmwSkipped)
+        };
+      })
+      .filter((quote): quote is BrowserSavedQuote => Boolean(
+        quote?.vehicleId
+        && quote.vehicleName
+        && Number.isFinite(Date.parse(quote.savedAt))
+        && Date.parse(quote.savedAt) >= newestAllowedSavedAt
+      ))
+      .sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt))
+      .slice(0, maxBrowserSavedQuotes);
+    if (quotes.length !== parsed.length) {
+      window.localStorage.setItem(browserSavedQuotesKey, JSON.stringify(quotes));
+    }
+    return quotes;
+  } catch {
+    window.localStorage.removeItem(browserSavedQuotesKey);
+    return [];
+  }
+}
+
+function browserSavedQuoteFromResult(result: QuoteResult, mileage: number): BrowserSavedQuote {
+  const savedAt = new Date().toISOString();
+  return {
+    savedQuoteId: result.quoteReference ? `quote-${result.quoteReference}` : `${result.vehicle.vehicleId}-${savedAt}`,
+    quoteReference: result.quoteReference,
+    quoteCreatedAt: result.quoteCreatedAt,
+    savedAt,
+    vehicleId: String(result.vehicle.vehicleId),
+    vehicleName: result.vehicle.vehicleName,
+    fuelType: result.vehicle.fuelType,
+    listPrice: Number(result.vehicle.listPrice),
+    annualRental: Number(result.annualRental),
+    co2Emissions: result.vehicle.co2Emissions,
+    electricRange: result.vehicle.electricRange,
+    annualMileage: mileage,
+    salarySacrificeMonthly: Number(result.salarySacrificeMonthly),
+    netMonthly: Number(result.netMonthly),
+    isOnOfferQuote: Boolean(result.isOnOfferQuote),
+    nmwSkipped: Boolean(result.nmwSkipped)
+  };
+}
+
+function writeBrowserSavedQuotes(quotes: BrowserSavedQuote[]) {
+  const newestAllowedSavedAt = Date.now() - browserSavedQuoteMaxAgeMs;
+  const filtered = quotes
+    .filter((quote) => Date.parse(quote.savedAt) >= newestAllowedSavedAt)
+    .sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt))
+    .slice(0, maxBrowserSavedQuotes);
+  window.localStorage.setItem(browserSavedQuotesKey, JSON.stringify(filtered));
+  return filtered;
+}
+
+function isBrowserSavedQuote(quote: QuoteResult | BrowserSavedQuote): quote is BrowserSavedQuote {
+  return "savedQuoteId" in quote;
+}
+
+function quoteVehicleName(quote: QuoteResult | BrowserSavedQuote) {
+  return isBrowserSavedQuote(quote) ? quote.vehicleName : quote.vehicle.vehicleName;
+}
+
+function quoteFuelType(quote: QuoteResult | BrowserSavedQuote) {
+  return isBrowserSavedQuote(quote) ? quote.fuelType : quote.vehicle.fuelType;
+}
+
+function quoteListPrice(quote: QuoteResult | BrowserSavedQuote) {
+  return isBrowserSavedQuote(quote) ? quote.listPrice : Number(quote.vehicle.listPrice);
+}
+
+function quoteAnnualMileage(quote: QuoteResult | BrowserSavedQuote, fallbackMileage: number) {
+  return isBrowserSavedQuote(quote) ? quote.annualMileage : fallbackMileage;
 }
 
 const adminTables: AdminTableConfig[] = [
@@ -668,7 +790,7 @@ function VehiclePicker({
 }
 
 function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [incomeTaxRates, setIncomeTaxRates] = useState<IncomeTaxRate[]>([]);
   const [pensionRates, setPensionRates] = useState<PensionRate[]>([]);
@@ -696,9 +818,10 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
   const [results, setResults] = useState<QuoteResult[]>([]);
   const [offerResults, setOfferResults] = useState<QuoteResult[]>([]);
-  const [selectedOrderResult, setSelectedOrderResult] = useState<QuoteResult | null>(null);
+  const [browserSavedQuotes, setBrowserSavedQuotes] = useState<BrowserSavedQuote[]>(() => readBrowserSavedQuotes());
+  const [selectedOrderResult, setSelectedOrderResult] = useState<QuoteResult | BrowserSavedQuote | null>(null);
   const [selectedBreakdownResult, setSelectedBreakdownResult] = useState<QuoteResult | null>(null);
-  const [resultReturnStep, setResultReturnStep] = useState<4 | 7>(4);
+  const [resultReturnStep, setResultReturnStep] = useState<4 | 7 | 8>(4);
   const [orderForm, setOrderForm] = useState({
     fullName: "",
     emailAddress: "",
@@ -851,6 +974,32 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     setRememberDetails(false);
   }
 
+  function saveQuotesToBrowser(quotes: QuoteResult[]) {
+    const newSavedQuotes = quotes
+      .filter((quote) => !quote.nmwBlocked)
+      .map((quote) => browserSavedQuoteFromResult(quote, annualMileage));
+    if (newSavedQuotes.length === 0) return;
+    const existingQuotes = readBrowserSavedQuotes();
+    const byId = new Map<string, BrowserSavedQuote>();
+    [...newSavedQuotes, ...existingQuotes].forEach((quote) => {
+      byId.set(quote.savedQuoteId, quote);
+    });
+    setBrowserSavedQuotes(writeBrowserSavedQuotes(Array.from(byId.values())));
+  }
+
+  function clearBrowserSavedQuotes() {
+    window.localStorage.removeItem(browserSavedQuotesKey);
+    setBrowserSavedQuotes([]);
+  }
+
+  function deleteBrowserSavedQuote(savedQuoteId: string) {
+    setBrowserSavedQuotes((current) => {
+      const next = current.filter((quote) => quote.savedQuoteId !== savedQuoteId);
+      writeBrowserSavedQuotes(next);
+      return next;
+    });
+  }
+
   function validateDetails() {
     if (!selectedEmployer) return "Please choose your employer.";
     if (!selectedTaxRate) return "Please choose your income tax level.";
@@ -918,12 +1067,18 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       ["Deal/Offer quote", result.isOnOfferQuote ? "Yes" : "No"],
       ["Full name", orderForm.fullName],
       ["Email address", orderForm.emailAddress],
-      ["Vehicle", result.vehicle.vehicleName],
-      ["Fuel type", result.vehicle.fuelType],
+      ["Vehicle", quoteVehicleName(result)],
+      ["Fuel type", quoteFuelType(result)],
       ["Employer", selectedEmployer?.organisation ?? "Not selected"],
-      ["Annual mileage", `${annualMileage.toLocaleString("en-GB")} miles`],
-      ["List price", currency(result.vehicle.listPrice)],
-      ["BIK rate", `${percent(result.bikRate)} (${result.bikSource})`],
+      ["Annual mileage", `${quoteAnnualMileage(result, annualMileage).toLocaleString("en-GB")} miles`],
+      ["List price", currency(quoteListPrice(result))],
+      ...(isBrowserSavedQuote(result) ? [
+        ["Annual rental", currency(result.annualRental)],
+        ["CO2", result.co2Emissions === null ? "Not stored" : `${result.co2Emissions.toLocaleString("en-GB")}g/km`],
+        ["Electric range", result.electricRange === null ? "Not stored" : `${result.electricRange.toLocaleString("en-GB")} miles`]
+      ] : [
+        ["BIK rate", `${percent(result.bikRate)} (${result.bikSource})`]
+      ]),
       ["Monthly salary sacrifice", currency(result.salarySacrificeMonthly)],
       ["Estimated monthly cost", currency(result.netMonthly)],
       ["NMW status", nmwStatus],
@@ -940,7 +1095,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       "",
       "Please prepare a revised quote, including any optional extras, and advise on the next steps for ordering the vehicle."
     ].join("\n");
-    const subject = `Lease car order request - ${result.vehicle.vehicleName}`;
+    const subject = `Lease car order request - ${quoteVehicleName(result)}`;
     window.location.href = `mailto:${FLEET_MANAGEMENT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
@@ -1207,6 +1362,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     setStatus({ type: "loading" });
     try {
       const resultsWithReferences = await calculateAndStoreQuotes(vehicleChoices, false);
+      saveQuotesToBrowser(resultsWithReferences);
       setResults(resultsWithReferences);
       setStatus({ type: "idle" });
       setStep(4);
@@ -1261,6 +1417,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         });
         return;
       }
+      saveQuotesToBrowser(resultsWithReferences);
       setOfferResults(resultsWithReferences);
       setStatus({ type: "idle" });
       setStep(7);
@@ -1336,6 +1493,14 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         <form onSubmit={nextFromDetails}>
           <h2>Your details</h2>
           <p className="form-hint">These answers are used only to calculate the estimated net monthly cost.</p>
+          {browserSavedQuotes.length > 0 && (
+            <div className="notice">
+              <p>You have {browserSavedQuotes.length.toLocaleString("en-GB")} quote{browserSavedQuotes.length === 1 ? "" : "s"} saved in this browser from the last month.</p>
+              <button className="secondary-service-button" type="button" onClick={() => setStep(8)}>
+                View saved quotes
+              </button>
+            </div>
+          )}
 
           <div className="question-block">
             <label htmlFor="employer">Employer</label>
@@ -1704,6 +1869,11 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <div className="button-row">
             <button className="secondary-service-button" type="button" onClick={() => setStep(3)}>Back to vehicles</button>
             <button className="service-button no-print" type="button" onClick={() => window.print()}>Save as PDF / Print</button>
+            {browserSavedQuotes.length > 0 && (
+              <button className="secondary-service-button no-print" type="button" onClick={() => setStep(8)}>
+                View saved quotes
+              </button>
+            )}
             <button
               className="secondary-service-button no-print"
               type="button"
@@ -1755,12 +1925,15 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
           <article className="quote-result order-quote-summary">
             <div>
-              <h3>{selectedOrderResult.vehicle.vehicleName}</h3>
+              <h3>{quoteVehicleName(selectedOrderResult)}</h3>
               {selectedOrderResult.quoteReference && (
                 <p className="quote-reference">Quote reference: {selectedOrderResult.quoteReference}</p>
               )}
               <p>
-                {selectedOrderResult.vehicle.fuelType} · List price {currency(selectedOrderResult.vehicle.listPrice)} · BIK {percent(selectedOrderResult.bikRate)} ({selectedOrderResult.bikSource})
+                {quoteFuelType(selectedOrderResult)} · List price {currency(quoteListPrice(selectedOrderResult))}
+                {isBrowserSavedQuote(selectedOrderResult)
+                  ? ` · Annual rental ${currency(selectedOrderResult.annualRental)}`
+                  : ` · BIK ${percent(selectedOrderResult.bikRate)} (${selectedOrderResult.bikSource})`}
               </p>
             </div>
             <div className="result-price">
@@ -1986,6 +2159,87 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <div className="button-row">
             <button className="secondary-service-button" type="button" onClick={() => setStep(4)}>Back to your quotes</button>
             <button className="service-button no-print" type="button" onClick={() => window.print()}>Save as PDF / Print</button>
+            {browserSavedQuotes.length > 0 && (
+              <button className="secondary-service-button no-print" type="button" onClick={() => setStep(8)}>
+                View saved quotes
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {step === 8 && (
+        <div>
+          <h2>Saved quotes on this device</h2>
+          <p className="form-hint">
+            These quotes are stored only in this browser. Quotes are kept for up to one month and the most recent {maxBrowserSavedQuotes} are retained.
+          </p>
+
+          <div className="result-list">
+            {browserSavedQuotes.map((quote) => (
+              <article className="quote-result" key={quote.savedQuoteId}>
+                <div>
+                  <h3>{quote.vehicleName}</h3>
+                  {quote.quoteReference && <p className="quote-reference">Quote reference: {quote.quoteReference}</p>}
+                  <p>
+                    {quote.isOnOfferQuote ? "Deal/Offer · " : ""}
+                    {quote.fuelType} · {quote.annualMileage.toLocaleString("en-GB")} miles per year · List price {currency(quote.listPrice)}
+                  </p>
+                  <p>
+                    Annual rental {currency(quote.annualRental)}
+                    {" · "}CO2 {quote.co2Emissions === null ? "not stored" : `${quote.co2Emissions.toLocaleString("en-GB")}g/km`}
+                    {" · "}Saved {new Date(quote.savedAt).toLocaleDateString("en-GB")}
+                  </p>
+                </div>
+                <div className="result-price">
+                  <div>
+                    <span>Monthly salary sacrifice</span>
+                    <strong>{currency(quote.salarySacrificeMonthly)}</strong>
+                    <small>per month</small>
+                  </div>
+                  <div>
+                    <span>Estimated monthly cost</span>
+                    <strong>{currency(quote.netMonthly)}</strong>
+                    <small>per month</small>
+                  </div>
+                </div>
+                {quote.nmwSkipped && (
+                  <div className="notice">
+                    Eligibility subject to National Minimum Wage check.
+                  </div>
+                )}
+                <div className="button-row">
+                  <button
+                    className="service-button no-print"
+                    type="button"
+                    onClick={() => {
+                      setSelectedOrderResult(quote);
+                      setResultReturnStep(8);
+                      setStatus({ type: "idle" });
+                      setStep(5);
+                    }}
+                  >
+                    Select Vehicle
+                  </button>
+                  <button className="text-button no-print" type="button" onClick={() => deleteBrowserSavedQuote(quote.savedQuoteId)}>
+                    Delete saved quote
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {browserSavedQuotes.length === 0 && (
+            <div className="notice">No recent quotes are saved in this browser.</div>
+          )}
+
+          <div className="button-row">
+            <button className="secondary-service-button" type="button" onClick={() => setStep(4)}>Back to quotes</button>
+            {browserSavedQuotes.length > 0 && (
+              <button className="text-button no-print" type="button" onClick={clearBrowserSavedQuotes}>
+                Clear all saved quotes
+              </button>
+            )}
           </div>
         </div>
       )}
