@@ -239,6 +239,21 @@ button:focus {
   width: 28px;
   min-height: 28px;
 }
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  margin: 0 0 10px;
+}
+.checkbox-row input {
+  width: 28px;
+  min-height: 28px;
+}
+.remember-details-panel p {
+  margin: 0 0 12px;
+  font-weight: 400;
+}
 
 .service-button,
 .submit-button,

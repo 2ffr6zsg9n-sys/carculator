@@ -212,8 +212,54 @@ function PrivacyNotice() {
         CARculator stores the quote details, quote reference, date and time, IP address, and browser/device information
         for audit and support purposes. We do not store your name, employee number, or email address.
       </p>
+      <p>
+        If you choose “Remember my details on this device”, your calculator choices are saved only in this browser on this device.
+        They are not sent to or stored in the CARculator database for this purpose. Do not use this option on a shared device.
+      </p>
     </div>
   );
+}
+
+const rememberedDetailsKey = "carculator-remembered-details-v1";
+
+type RememberedQuoteDetails = {
+  employerId: string;
+  taxBand: string;
+  paysPension: string;
+  pensionTier: string;
+  skipNMW: boolean;
+  ageBand: string;
+  isAgendaForChange: string;
+  afcPayRateId: string;
+  fullTimeAnnualSalary: string;
+  contractedHours: string;
+  wholeTimeHours: string;
+  annualMileage: number;
+};
+
+function readRememberedQuoteDetails(): RememberedQuoteDetails | null {
+  try {
+    const stored = window.localStorage.getItem(rememberedDetailsKey);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Partial<RememberedQuoteDetails>;
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      employerId: String(parsed.employerId ?? ""),
+      taxBand: String(parsed.taxBand ?? ""),
+      paysPension: String(parsed.paysPension ?? ""),
+      pensionTier: String(parsed.pensionTier ?? ""),
+      skipNMW: Boolean(parsed.skipNMW),
+      ageBand: String(parsed.ageBand ?? ""),
+      isAgendaForChange: parsed.isAgendaForChange === "no" ? "no" : "yes",
+      afcPayRateId: String(parsed.afcPayRateId ?? ""),
+      fullTimeAnnualSalary: String(parsed.fullTimeAnnualSalary ?? ""),
+      contractedHours: String(parsed.contractedHours ?? "37.5"),
+      wholeTimeHours: String(parsed.wholeTimeHours ?? "37.5"),
+      annualMileage: Number(parsed.annualMileage) || 6000
+    };
+  } catch {
+    return null;
+  }
 }
 
 const adminTables: AdminTableConfig[] = [
@@ -642,6 +688,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [contractedHours, setContractedHours] = useState("37.5");
   const [wholeTimeHours, setWholeTimeHours] = useState("37.5");
   const [annualMileage, setAnnualMileage] = useState(6000);
+  const [rememberDetails, setRememberDetails] = useState(() => readRememberedQuoteDetails() !== null);
   const [vehicleType, setVehicleType] = useState("");
   const [maxMonthlyCost, setMaxMonthlyCost] = useState("");
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
@@ -693,15 +740,49 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         setCO2Rates(co2Body.items);
         setElectricMileageRates(electricBody.items);
         setVehicleTypes(vehicleTypesBody.items);
-        setEmployerId(String(employerBody.items[0]?.employerId ?? ""));
-        setTaxBand(String(taxBody.items[0]?.taxBand ?? ""));
-        setPensionTier(String(pensionBody.items[0]?.tier ?? ""));
+        const remembered = readRememberedQuoteDetails();
+        const defaultEmployerId = String(employerBody.items[0]?.employerId ?? "");
+        const defaultTaxBand = String(taxBody.items[0]?.taxBand ?? "");
+        const defaultPensionTier = String(pensionBody.items[0]?.tier ?? "");
         const defaultAgeBand = nmwBody.items.find((rate: NationalMinimumWageRate) => {
           const ageBand = rate.ageBand.toLowerCase();
           return ageBand.includes("21") && (ageBand.includes("over") || ageBand.includes("above"));
         });
-        setAgeBand(String(defaultAgeBand?.ageBand ?? nmwBody.items[0]?.ageBand ?? ""));
-        setAFCPayRateId(String(afcBody.items[0]?.afcPayRateId ?? ""));
+        const defaultNMWAgeBand = String(defaultAgeBand?.ageBand ?? nmwBody.items[0]?.ageBand ?? "");
+        const defaultAFCPayRateId = String(afcBody.items[0]?.afcPayRateId ?? "");
+        setEmployerId(
+          remembered && employerBody.items.some((employer: Employer) => String(employer.employerId) === remembered.employerId)
+            ? remembered.employerId
+            : defaultEmployerId
+        );
+        setTaxBand(
+          remembered && taxBody.items.some((rate: IncomeTaxRate) => rate.taxBand === remembered.taxBand)
+            ? remembered.taxBand
+            : defaultTaxBand
+        );
+        setPaysPension(remembered?.paysPension === "yes" || remembered?.paysPension === "no" ? remembered.paysPension : "");
+        setPensionTier(
+          remembered && pensionBody.items.some((rate: PensionRate) => rate.tier === remembered.pensionTier)
+            ? remembered.pensionTier
+            : defaultPensionTier
+        );
+        setSkipNMW(remembered?.skipNMW ?? false);
+        setAgeBand(
+          remembered && nmwBody.items.some((rate: NationalMinimumWageRate) => rate.ageBand === remembered.ageBand)
+            ? remembered.ageBand
+            : defaultNMWAgeBand
+        );
+        setIsAgendaForChange(remembered?.isAgendaForChange === "no" ? "no" : "yes");
+        setAFCPayRateId(
+          remembered && afcBody.items.some((rate: AgendaForChangePayRate) => String(rate.afcPayRateId) === remembered.afcPayRateId)
+            ? remembered.afcPayRateId
+            : defaultAFCPayRateId
+        );
+        setFullTimeAnnualSalary(remembered?.fullTimeAnnualSalary ?? "");
+        setContractedHours(remembered?.contractedHours || "37.5");
+        setWholeTimeHours(remembered?.isAgendaForChange === "yes" ? "37.5" : remembered?.wholeTimeHours || "37.5");
+        setAnnualMileage(mileageOptions.includes(Number(remembered?.annualMileage)) ? Number(remembered?.annualMileage) : 6000);
+        setRememberDetails(Boolean(remembered));
         setStatus({ type: "idle" });
       } catch (error) {
         setStatus({
@@ -738,6 +819,32 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
   function updateVehicle(index: number, vehicle: Vehicle | null) {
     setVehicles((current) => current.map((item, itemIndex) => itemIndex === index ? vehicle : item));
+  }
+
+  function rememberedQuoteDetailsPayload(): RememberedQuoteDetails {
+    return {
+      employerId,
+      taxBand,
+      paysPension,
+      pensionTier,
+      skipNMW,
+      ageBand,
+      isAgendaForChange,
+      afcPayRateId,
+      fullTimeAnnualSalary,
+      contractedHours,
+      wholeTimeHours,
+      annualMileage
+    };
+  }
+
+  function saveRememberedQuoteDetails() {
+    window.localStorage.setItem(rememberedDetailsKey, JSON.stringify(rememberedQuoteDetailsPayload()));
+  }
+
+  function clearRememberedQuoteDetails() {
+    window.localStorage.removeItem(rememberedDetailsKey);
+    setRememberDetails(false);
   }
 
   function validateDetails() {
@@ -1179,6 +1286,11 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       setStatus({ type: "error", message: error });
       return;
     }
+    if (rememberDetails) {
+      saveRememberedQuoteDetails();
+    } else {
+      window.localStorage.removeItem(rememberedDetailsKey);
+    }
     setStatus({ type: "idle" });
     setStep(3);
   }
@@ -1411,6 +1523,29 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
               Eligibility will be subject to a National Minimum Wage check before the vehicle can be approved.
             </div>
           )}
+
+          <div className="notice remember-details-panel">
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={rememberDetails}
+                onChange={(event) => {
+                  setRememberDetails(event.target.checked);
+                  if (!event.target.checked) {
+                    window.localStorage.removeItem(rememberedDetailsKey);
+                  }
+                }}
+              />
+              Remember my details on this device
+            </label>
+            <p>
+              If selected, CARculator will save your employer, tax, pension, mileage and National Minimum Wage choices
+              in this browser so you do not need to re-enter them next time. Do not use this on a shared device.
+            </p>
+            <button className="text-button" type="button" onClick={clearRememberedQuoteDetails}>
+              Clear saved details
+            </button>
+          </div>
 
           {status.type === "error" && <div className="message error">{status.message}</div>}
 
