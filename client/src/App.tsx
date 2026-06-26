@@ -322,7 +322,7 @@ function readBrowserSavedQuotes(): BrowserSavedQuote[] {
         && Number.isFinite(Date.parse(quote.savedAt))
         && Date.parse(quote.savedAt) >= newestAllowedSavedAt
       ))
-      .sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt))
+      .sort(sortBrowserSavedQuotes)
       .slice(0, maxBrowserSavedQuotes);
     if (quotes.length !== parsed.length) {
       window.localStorage.setItem(browserSavedQuotesKey, JSON.stringify(quotes));
@@ -360,10 +360,21 @@ function writeBrowserSavedQuotes(quotes: BrowserSavedQuote[]) {
   const newestAllowedSavedAt = Date.now() - browserSavedQuoteMaxAgeMs;
   const filtered = quotes
     .filter((quote) => Date.parse(quote.savedAt) >= newestAllowedSavedAt)
-    .sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt))
+    .sort(sortBrowserSavedQuotes)
     .slice(0, maxBrowserSavedQuotes);
   window.localStorage.setItem(browserSavedQuotesKey, JSON.stringify(filtered));
   return filtered;
+}
+
+function sortBrowserSavedQuotes(left: BrowserSavedQuote, right: BrowserSavedQuote) {
+  const leftReference = Number(left.quoteReference);
+  const rightReference = Number(right.quoteReference);
+  if (Number.isFinite(leftReference) && Number.isFinite(rightReference) && leftReference !== rightReference) {
+    return rightReference - leftReference;
+  }
+  if (Number.isFinite(rightReference) && !Number.isFinite(leftReference)) return 1;
+  if (Number.isFinite(leftReference) && !Number.isFinite(rightReference)) return -1;
+  return Date.parse(right.savedAt) - Date.parse(left.savedAt);
 }
 
 function isBrowserSavedQuote(quote: QuoteResult | BrowserSavedQuote): quote is BrowserSavedQuote {
