@@ -223,6 +223,7 @@ function PrivacyNotice() {
 const rememberedDetailsKey = "carculator-remembered-details-v1";
 
 type RememberedQuoteDetails = {
+  quoteApiKey?: string;
   employerId: string;
   taxBand: string;
   paysPension: string;
@@ -244,6 +245,7 @@ function readRememberedQuoteDetails(): RememberedQuoteDetails | null {
     const parsed = JSON.parse(stored) as Partial<RememberedQuoteDetails>;
     if (!parsed || typeof parsed !== "object") return null;
     return {
+      quoteApiKey: typeof parsed.quoteApiKey === "string" ? parsed.quoteApiKey : "",
       employerId: String(parsed.employerId ?? ""),
       taxBand: String(parsed.taxBand ?? ""),
       paysPension: String(parsed.paysPension ?? ""),
@@ -823,6 +825,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
   function rememberedQuoteDetailsPayload(): RememberedQuoteDetails {
     return {
+      quoteApiKey,
       employerId,
       taxBand,
       paysPension,
@@ -844,6 +847,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
   function clearRememberedQuoteDetails() {
     window.localStorage.removeItem(rememberedDetailsKey);
+    window.sessionStorage.removeItem("lease-car-quote-key");
     setRememberDetails(false);
   }
 
@@ -1532,15 +1536,15 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                 onChange={(event) => {
                   setRememberDetails(event.target.checked);
                   if (!event.target.checked) {
-                    window.localStorage.removeItem(rememberedDetailsKey);
+                    clearRememberedQuoteDetails();
                   }
                 }}
               />
               Remember my details on this device
             </label>
             <p>
-              If selected, CARculator will save your employer, tax, pension, mileage and National Minimum Wage choices
-              in this browser so you do not need to re-enter them next time. Do not use this on a shared device.
+              If selected, CARculator will save your employer, tax, pension, mileage, and National Minimum Wage choices
+              in this browser so you do not need to re-enter them next time. We do not store your name, employee number, or email address.
             </p>
             <button className="text-button" type="button" onClick={clearRememberedQuoteDetails}>
               Clear saved details
@@ -3173,7 +3177,7 @@ export function App() {
         : "quote"
   );
   const [quoteApiKey, setQuoteApiKey] = useState(
-    () => window.sessionStorage.getItem("lease-car-quote-key") ?? ""
+    () => window.sessionStorage.getItem("lease-car-quote-key") ?? readRememberedQuoteDetails()?.quoteApiKey ?? ""
   );
   const [draftQuoteApiKey, setDraftQuoteApiKey] = useState(quoteApiKey);
   const [quoteAccessError, setQuoteAccessError] = useState("");
