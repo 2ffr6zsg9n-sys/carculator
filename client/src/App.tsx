@@ -833,7 +833,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [contractedHours, setContractedHours] = useState("37.5");
   const [wholeTimeHours, setWholeTimeHours] = useState("37.5");
   const [annualMileage, setAnnualMileage] = useState(6000);
-  const [rememberDetails, setRememberDetails] = useState(() => readRememberedQuoteDetails() !== null);
+  const [rememberDetails, setRememberDetails] = useState(() => IS_IOS_BUILD || readRememberedQuoteDetails() !== null);
   const [vehicleType, setVehicleType] = useState("");
   const [maxMonthlyCost, setMaxMonthlyCost] = useState("");
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
@@ -934,7 +934,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         setContractedHours(remembered?.contractedHours || "37.5");
         setWholeTimeHours(remembered?.isAgendaForChange === "yes" ? "37.5" : remembered?.wholeTimeHours || "37.5");
         setAnnualMileage(mileageOptions.includes(Number(remembered?.annualMileage)) ? Number(remembered?.annualMileage) : 6000);
-        setRememberDetails(Boolean(remembered));
+        setRememberDetails(IS_IOS_BUILD || Boolean(remembered));
         setStatus({ type: "idle" });
       } catch (error) {
         setStatus({
@@ -1474,7 +1474,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       setStatus({ type: "error", message: error });
       return;
     }
-    if (rememberDetails) {
+    if (IS_IOS_BUILD || rememberDetails) {
       saveRememberedQuoteDetails();
     } else {
       window.localStorage.removeItem(rememberedDetailsKey);
@@ -1737,28 +1737,41 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             </div>
           )}
 
-          <div className="notice remember-details-panel">
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={rememberDetails}
-                onChange={(event) => {
-                  setRememberDetails(event.target.checked);
-                  if (!event.target.checked) {
-                    clearRememberedQuoteDetails();
-                  }
-                }}
-              />
-              Remember my details on this device
-            </label>
-            <p>
-              If selected, CARculator will save your employer, tax, pension, mileage, and National Minimum Wage choices
-              on {LOCAL_STORAGE_LOCATION} so you do not need to re-enter them next time. We do not store your name, employee number, or email address.
-            </p>
-            <button className="text-button" type="button" onClick={clearRememberedQuoteDetails}>
-              Clear saved details
-            </button>
-          </div>
+          {IS_IOS_BUILD ? (
+            <div className="notice remember-details-panel">
+              <h3>Details saved on this device</h3>
+              <p>
+                CARculator saves your employer, tax, pension, mileage, and National Minimum Wage choices on this device
+                so you do not need to re-enter them next time. We do not store your name, employee number, or email address.
+              </p>
+              <button className="text-button" type="button" onClick={clearRememberedQuoteDetails}>
+                Delete saved details
+              </button>
+            </div>
+          ) : (
+            <div className="notice remember-details-panel">
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={rememberDetails}
+                  onChange={(event) => {
+                    setRememberDetails(event.target.checked);
+                    if (!event.target.checked) {
+                      clearRememberedQuoteDetails();
+                    }
+                  }}
+                />
+                Remember my details on this device
+              </label>
+              <p>
+                If selected, CARculator will save your employer, tax, pension, mileage, and National Minimum Wage choices
+                on {LOCAL_STORAGE_LOCATION} so you do not need to re-enter them next time. We do not store your name, employee number, or email address.
+              </p>
+              <button className="text-button" type="button" onClick={clearRememberedQuoteDetails}>
+                Clear saved details
+              </button>
+            </div>
+          )}
 
           {status.type === "error" && <div className="message error">{status.message}</div>}
 
