@@ -1832,7 +1832,9 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
               CARculator is intended only for employees of South West Yorkshire Partnership NHS FT.
               We will save your employer, tax, pension, mileage, and National Minimum Wage choices on this device.
               Quotes are stored on this device so you can return to them later, and a copy of each quote is saved to the
-              Fleet Management database. We do not store your name, employee number, or email address.
+              Fleet Management database. Saved quotes older than one month are removed from this device when you next use
+              CARculator, and only the most recent {maxBrowserSavedQuotes} saved quotes are kept on this device. We do not
+              store your name, employee number, or email address.
             </p>
             <label className="checkbox-row">
               <input
