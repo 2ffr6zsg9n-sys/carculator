@@ -1659,9 +1659,6 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       {step === 0 && (
         <div className="app-home">
           <h2>What would you like to do?</h2>
-          <p className="form-hint">
-            CARculator can use the details saved on this device so you can get to quotes more quickly.
-          </p>
           <div className="app-home-actions">
             <button className="app-home-card" type="button" onClick={startNewQuote}>
               <span>New quote</span>
@@ -1687,7 +1684,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         <form onSubmit={nextFromDetails}>
           <h2>Your details</h2>
           <p className="form-hint">These answers are used only to calculate the estimated net monthly cost.</p>
-          {browserSavedQuotes.length > 0 && (
+          {!IS_IOS_BUILD && browserSavedQuotes.length > 0 && (
             <div className="notice">
               <p>You have {browserSavedQuotes.length.toLocaleString("en-GB")} quote{browserSavedQuotes.length === 1 ? "" : "s"} saved on {LOCAL_STORAGE_LOCATION} from the last month.</p>
               <p>Do not use this option on a shared device.</p>
@@ -3757,7 +3754,9 @@ export function App() {
         <section className="intro">
           <BrandHeader />
           <h1>CARculator</h1>
-          <p>Answer a few questions, choose up to five vehicles, and compare the estimated net monthly cost.</p>
+          {!IS_IOS_BUILD && (
+            <p>Answer a few questions, choose up to five vehicles, and compare the estimated net monthly cost.</p>
+          )}
         </section>
 
         <QuoteRequestPage quoteApiKey={quoteApiKey} />
