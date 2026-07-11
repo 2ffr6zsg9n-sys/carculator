@@ -918,7 +918,6 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
   const [resultReturnStep, setResultReturnStep] = useState<4 | 7 | 8>(4);
   const [orderForm, setOrderForm] = useState({
     fullName: "",
-    emailAddress: "",
     bodyColour: "",
     interiorColour: "",
     optionalExtras: "",
@@ -1228,7 +1227,6 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
       ["Quote reference", result.quoteReference ? String(result.quoteReference) : "Not available"],
       ["Deal/Offer quote", result.isOnOfferQuote ? "Yes" : "No"],
       ["Full name", orderForm.fullName],
-      ["Email address", orderForm.emailAddress],
       ["Employer", selectedEmployer?.organisation ?? "Not selected"]
     ];
     const vehicleRows: [string, string][] = [
@@ -1824,6 +1822,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           <div className="notice registration-consent-panel">
             <h3>Your data</h3>
             <p>
+              CARculator is intended only for employees of South West Yorkshire Partnership NHS FT.
               We will save your employer, tax, pension, mileage, and National Minimum Wage choices on this device.
               We do not store your name, employee number, or email address.
             </p>
@@ -2338,17 +2337,6 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
               id="order-full-name"
               value={orderForm.fullName}
               onChange={(event) => updateOrderForm("fullName", event.target.value)}
-              required
-            />
-          </div>
-
-          <div className="question-block">
-            <label htmlFor="order-email-address">Email address</label>
-            <input
-              id="order-email-address"
-              type="email"
-              value={orderForm.emailAddress}
-              onChange={(event) => updateOrderForm("emailAddress", event.target.value)}
               required
             />
           </div>
