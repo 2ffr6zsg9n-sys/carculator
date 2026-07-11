@@ -1224,6 +1224,8 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
       ? "Eligibility subject to National Minimum Wage check"
       : "National Minimum Wage check completed in CARculator";
     const employeeRows: [string, string][] = [
+      ["Work email address", "<<< PLEASE ENTER YOUR NHS WORK EMAIL ADDRESS >>>"],
+      ["Employee number", "<<< PLEASE ENTER YOUR EMPLOYEE NUMBER >>>"],
       ["Quote reference", result.quoteReference ? String(result.quoteReference) : "Not available"],
       ["Deal/Offer quote", result.isOnOfferQuote ? "Yes" : "No"],
       ["Full name", orderForm.fullName],
@@ -1254,6 +1256,10 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
     ];
     const body = [
       "I am interested in ordering the following vehicle.",
+      "I have provided my work email address and employee number below.",
+      "",
+      "ACTION REQUIRED BEFORE SENDING",
+      "Please replace the two placeholder lines below with your NHS work email address and employee number.",
       "",
       plainTextFormSection("Employee details", employeeRows),
       "",
