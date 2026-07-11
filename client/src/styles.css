@@ -733,6 +733,26 @@ button:focus {
   padding: 22px;
   background: #fff;
 }
+.offer-save-checkbox {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--nhs-light-blue);
+  color: #0b0c0c;
+  font-size: 16px;
+  font-weight: 700;
+}
+.offer-save-checkbox input {
+  width: 24px;
+  min-height: 24px;
+}
+.offer-save-checkbox input:disabled + span {
+  color: var(--text-muted);
+}
 .vehicle-title-button {
   border: 0;
   background: transparent;

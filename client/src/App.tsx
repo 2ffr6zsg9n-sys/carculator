@@ -911,6 +911,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
   const [results, setResults] = useState<QuoteResult[]>([]);
   const [offerResults, setOfferResults] = useState<QuoteResult[]>([]);
+  const [selectedOfferIds, setSelectedOfferIds] = useState<string[]>([]);
   const [browserSavedQuotes, setBrowserSavedQuotes] = useState<BrowserSavedQuote[]>(() => readBrowserSavedQuotes());
   const [selectedOrderResult, setSelectedOrderResult] = useState<QuoteResult | BrowserSavedQuote | null>(null);
   const [selectedBreakdownResult, setSelectedBreakdownResult] = useState<QuoteResult | null>(null);
@@ -924,7 +925,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
     earliestDeliveryDate: "",
     replacementRegistration: ""
   });
-  const [status, setStatus] = useState<{ type: "idle" | "loading" | "error"; message?: string }>({ type: "loading" });
+  const [status, setStatus] = useState<{ type: "idle" | "loading" | "success" | "error"; message?: string }>({ type: "loading" });
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: IS_IOS_BUILD ? "auto" : "smooth" });
@@ -1122,6 +1123,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
     setVehicles([null, null, null, null, null]);
     setResults([]);
     setOfferResults([]);
+    setSelectedOfferIds([]);
     setSelectedBreakdownResult(null);
     setSelectedOrderResult(null);
     setStatus({ type: "idle" });
@@ -1417,7 +1419,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
     };
   }
 
-  async function calculateAndStoreQuotes(vehicleChoices: Vehicle[], isOnOfferQuote = false, storeNMWBlockedQuotes = true) {
+  async function calculateQuoteResults(vehicleChoices: Vehicle[], isOnOfferQuote = false) {
     if (!selectedEmployer || !selectedTaxRate || !selectedNI) {
       throw new Error("Some calculator reference data is missing.");
     }
@@ -1438,7 +1440,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
       : 0;
     const vatRate = normaliseRate(selectedNI.vatRate);
 
-    const nextResults = vehicleChoices.map((vehicle, index) => {
+    return vehicleChoices.map((vehicle, index) => {
       const rentals = rentalBodies[index].items as VehicleRentalRate[];
       const cheapestRental = rentals
         .slice()
@@ -1477,10 +1479,12 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
         nmwMinimumRate: nmw.minimumRate
       };
     });
+  }
 
+  async function storeQuoteResults(resultsToSave: QuoteResult[], isOnOfferQuote = false, storeNMWBlockedQuotes = true) {
     const resultsToStore = storeNMWBlockedQuotes
-      ? nextResults
-      : nextResults.filter((result) => !result.nmwBlocked);
+      ? resultsToSave
+      : resultsToSave.filter((result) => !result.nmwBlocked);
     if (resultsToStore.length === 0) {
       return [];
     }
@@ -1508,6 +1512,11 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
         quoteCreatedAt: savedQuote?.createdAt
       };
     });
+  }
+
+  async function calculateAndStoreQuotes(vehicleChoices: Vehicle[], isOnOfferQuote = false, storeNMWBlockedQuotes = true) {
+    const nextResults = await calculateQuoteResults(vehicleChoices, isOnOfferQuote);
+    return storeQuoteResults(nextResults, isOnOfferQuote, storeNMWBlockedQuotes);
   }
 
   async function calculateQuotes() {
@@ -1561,12 +1570,14 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
       const offerVehicles = await loadOfferVehicles();
       if (offerVehicles.length === 0) {
         setOfferResults([]);
+        setSelectedOfferIds([]);
         setStatus({ type: "error", message: `There are no Deals/Offers with a rental available at ${annualMileage.toLocaleString("en-GB")} miles per year.` });
         return;
       }
-      const resultsWithReferences = await calculateAndStoreQuotes(offerVehicles, true, false);
-      if (resultsWithReferences.length === 0) {
+      const previewResults = (await calculateQuoteResults(offerVehicles, true)).filter((result) => !result.nmwBlocked);
+      if (previewResults.length === 0) {
         setOfferResults([]);
+        setSelectedOfferIds([]);
         setStatus({
           type: "error",
           message: skipNMW
@@ -1575,14 +1586,74 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
         });
         return;
       }
-      saveQuotesToBrowser(resultsWithReferences);
-      setOfferResults(resultsWithReferences);
+      setOfferResults(previewResults);
+      setSelectedOfferIds([]);
       setStatus({ type: "idle" });
       setStep(7);
     } catch (error) {
       setStatus({
         type: "error",
         message: error instanceof Error ? error.message : "The Deals/Offers could not be calculated."
+      });
+    }
+  }
+
+  function toggleSelectedOffer(vehicleId: string) {
+    setSelectedOfferIds((current) =>
+      current.includes(vehicleId)
+        ? current.filter((id) => id !== vehicleId)
+        : [...current, vehicleId]
+    );
+  }
+
+  async function saveSelectedOfferQuotes() {
+    const offersToSave = offerResults.filter((result) =>
+      selectedOfferIds.includes(result.vehicle.vehicleId) && !result.quoteReference
+    );
+    if (offersToSave.length === 0) {
+      setStatus({ type: "error", message: "Please tick at least one unsaved offer to save." });
+      return;
+    }
+    setStatus({ type: "loading" });
+    try {
+      const savedOffers = await storeQuoteResults(offersToSave, true, false);
+      saveQuotesToBrowser(savedOffers);
+      setOfferResults((current) => current.map((result) =>
+        savedOffers.find((saved) => saved.vehicle.vehicleId === result.vehicle.vehicleId) ?? result
+      ));
+      setSelectedOfferIds([]);
+      setStatus({
+        type: "success",
+        message: `${savedOffers.length.toLocaleString("en-GB")} offer quote${savedOffers.length === 1 ? "" : "s"} saved.`
+      });
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "The selected offer quotes could not be saved."
+      });
+    }
+  }
+
+  async function selectOfferVehicle(result: QuoteResult) {
+    setStatus({ type: "loading" });
+    try {
+      const [savedOffer] = result.quoteReference
+        ? [result]
+        : await storeQuoteResults([result], true, false);
+      if (!result.quoteReference) {
+        saveQuotesToBrowser([savedOffer]);
+        setOfferResults((current) => current.map((item) =>
+          item.vehicle.vehicleId === savedOffer.vehicle.vehicleId ? savedOffer : item
+        ));
+      }
+      setSelectedOrderResult(savedOffer);
+      setResultReturnStep(7);
+      setStatus({ type: "idle" });
+      setStep(5);
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "The offer quote could not be saved."
       });
     }
   }
@@ -2418,8 +2489,11 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
         <div>
           <h2>Deals/Offers salary sacrifice quotes</h2>
           <p className="form-hint">
-            These Deals/Offers use vehicles currently flagged as on offer and the cheapest available rental at {annualMileage.toLocaleString("en-GB")} miles per year.
+            These Deals/Offers use vehicles currently flagged as on offer and the cheapest available rental at {annualMileage.toLocaleString("en-GB")} miles per year. Viewing this page does not save the offer quotes.
           </p>
+          <div className="notice">
+            Tick any offers you want to keep, then use “Save selected offers”. If you choose “Select Vehicle”, CARculator will save that one offer first so Fleet Management can refer to the quote reference.
+          </div>
           {!IS_IOS_BUILD && (
           <button className="service-button no-print" type="button" onClick={() => window.print()}>
             Save as PDF / Print
@@ -2429,6 +2503,15 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           <div className="result-list">
             {offerResults.map((result) => (
               <article className="quote-result" key={`${result.vehicle.vehicleId}-${result.quoteReference ?? "offer"}`}>
+                <label className="offer-save-checkbox no-print">
+                  <input
+                    type="checkbox"
+                    checked={selectedOfferIds.includes(result.vehicle.vehicleId)}
+                    disabled={Boolean(result.quoteReference) || status.type === "loading"}
+                    onChange={() => toggleSelectedOffer(result.vehicle.vehicleId)}
+                  />
+                  <span>{result.quoteReference ? `Saved as quote ${result.quoteReference}` : "Save this offer"}</span>
+                </label>
                 <div
                   className="vehicle-description-trigger"
                   role="button"
@@ -2473,14 +2556,10 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
                     <button
                       className="service-button no-print"
                       type="button"
-                      onClick={() => {
-                        setSelectedOrderResult(result);
-                        setResultReturnStep(7);
-                        setStatus({ type: "idle" });
-                        setStep(5);
-                      }}
+                      disabled={status.type === "loading"}
+                      onClick={() => void selectOfferVehicle(result)}
                     >
-                      Select Vehicle
+                      {status.type === "loading" ? "Saving…" : "Select Vehicle"}
                     </button>
                   </>
                 )}
@@ -2492,6 +2571,22 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
             <div className="notice">No Deals/Offers are currently available for the selected annual mileage.</div>
           )}
           {status.type === "error" && <div className="message error">{status.message}</div>}
+          {status.type === "success" && <div className="message success">{status.message}</div>}
+
+          {offerResults.length > 0 && (
+            <div className="button-row no-print">
+              <button
+                className="service-button"
+                type="button"
+                disabled={status.type === "loading" || selectedOfferIds.length === 0}
+                onClick={() => void saveSelectedOfferQuotes()}
+              >
+                {status.type === "loading"
+                  ? "Saving…"
+                  : `Save selected offer${selectedOfferIds.length === 1 ? "" : "s"}`}
+              </button>
+            </div>
+          )}
 
           {!IS_IOS_BUILD && (
           <div className="button-row">
