@@ -176,6 +176,41 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   background: var(--nhs-light-blue);
   color: var(--nhs-dark-blue);
 }
+.app-home {
+  max-width: 760px;
+}
+.app-home-actions {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+.app-home-card {
+  width: 100%;
+  border: 2px solid var(--nhs-blue);
+  border-left-width: 8px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  padding: 22px;
+  text-align: left;
+}
+.app-home-card span {
+  color: var(--nhs-blue);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.app-home-card small {
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1.35;
+}
+.app-home-card:active,
+.app-home-card:hover {
+  background: var(--nhs-light-blue);
+}
 
 label,
 legend {

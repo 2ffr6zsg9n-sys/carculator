@@ -811,7 +811,7 @@ function VehiclePicker({
 }
 
 function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [incomeTaxRates, setIncomeTaxRates] = useState<IncomeTaxRate[]>([]);
   const [pensionRates, setPensionRates] = useState<PensionRate[]>([]);
@@ -833,6 +833,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [contractedHours, setContractedHours] = useState("37.5");
   const [wholeTimeHours, setWholeTimeHours] = useState("37.5");
   const [annualMileage, setAnnualMileage] = useState(6000);
+  const [hasSavedDetails, setHasSavedDetails] = useState(() => readRememberedQuoteDetails() !== null);
   const [rememberDetails, setRememberDetails] = useState(() => IS_IOS_BUILD || readRememberedQuoteDetails() !== null);
   const [vehicleType, setVehicleType] = useState("");
   const [maxMonthlyCost, setMaxMonthlyCost] = useState("");
@@ -934,7 +935,11 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         setContractedHours(remembered?.contractedHours || "37.5");
         setWholeTimeHours(remembered?.isAgendaForChange === "yes" ? "37.5" : remembered?.wholeTimeHours || "37.5");
         setAnnualMileage(mileageOptions.includes(Number(remembered?.annualMileage)) ? Number(remembered?.annualMileage) : 6000);
+        setHasSavedDetails(Boolean(remembered));
         setRememberDetails(IS_IOS_BUILD || Boolean(remembered));
+        if (IS_IOS_BUILD && (remembered || readBrowserSavedQuotes().length > 0)) {
+          setStep(0);
+        }
         setStatus({ type: "idle" });
       } catch (error) {
         setStatus({
@@ -993,11 +998,13 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
   function saveRememberedQuoteDetails() {
     window.localStorage.setItem(rememberedDetailsKey, JSON.stringify(rememberedQuoteDetailsPayload()));
+    setHasSavedDetails(true);
   }
 
   function clearRememberedQuoteDetails() {
     window.localStorage.removeItem(rememberedDetailsKey);
     window.sessionStorage.removeItem("lease-car-quote-key");
+    setHasSavedDetails(false);
     setRememberDetails(false);
   }
 
@@ -1025,6 +1032,21 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       writeBrowserSavedQuotes(next);
       return next;
     });
+  }
+
+  function startNewQuote() {
+    setVehicles([null, null, null, null, null]);
+    setResults([]);
+    setOfferResults([]);
+    setSelectedBreakdownResult(null);
+    setSelectedOrderResult(null);
+    setStatus({ type: "idle" });
+    setStep(IS_IOS_BUILD && hasSavedDetails ? 3 : 1);
+  }
+
+  function openMyDetails() {
+    setStatus({ type: "idle" });
+    setStep(1);
   }
 
   function validateDetails() {
@@ -1489,48 +1511,89 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
   return (
     <section className="service-panel">
-      <div className="progress-steps" aria-label="Quote progress">
-        {([
-          [1, "1. Your details"],
-          [2, "2. Minimum wage check"],
-          [3, "3. Choose vehicles"],
-          [4, "4. Your quote"]
-        ] as const).map(([targetStep, label]) => (
-          targetStep < step ? (
+      {step !== 0 && (
+        <div className="progress-steps" aria-label="Quote progress">
+          {([
+            [1, "1. Your details"],
+            [2, "2. Minimum wage check"],
+            [3, "3. Choose vehicles"],
+            [4, "4. Your quote"]
+          ] as const).map(([targetStep, label]) => (
+            targetStep < step ? (
+              <button
+                key={targetStep}
+                type="button"
+                className="completed"
+                onClick={() => {
+                  setStatus({ type: "idle" });
+                  setStep(targetStep);
+                }}
+              >
+                {label}
+              </button>
+            ) : (
+              <span key={targetStep} className={targetStep === step ? "current" : ""}>
+                {label}
+              </span>
+            )
+          ))}
+          {browserSavedQuotes.length > 0 && (
+            step === 8 ? (
+              <span className="current">5. Saved quotes</span>
+            ) : (
+              <button
+                type="button"
+                className="completed"
+                onClick={() => {
+                  setStatus({ type: "idle" });
+                  setStep(8);
+                }}
+              >
+                5. Saved quotes
+              </button>
+            )
+          )}
+          {IS_IOS_BUILD && (hasSavedDetails || browserSavedQuotes.length > 0) && (
             <button
-              key={targetStep}
               type="button"
               className="completed"
               onClick={() => {
                 setStatus({ type: "idle" });
-                setStep(targetStep);
+                setStep(0);
               }}
             >
-              {label}
+              Home
             </button>
-          ) : (
-            <span key={targetStep} className={targetStep === step ? "current" : ""}>
-              {label}
-            </span>
-          )
-        ))}
-        {browserSavedQuotes.length > 0 && (
-          step === 8 ? (
-            <span className="current">5. Saved quotes</span>
-          ) : (
-            <button
-              type="button"
-              className="completed"
-              onClick={() => {
-                setStatus({ type: "idle" });
-                setStep(8);
-              }}
-            >
-              5. Saved quotes
+          )}
+        </div>
+      )}
+
+      {step === 0 && (
+        <div className="app-home">
+          <h2>What would you like to do?</h2>
+          <p className="form-hint">
+            CARculator can use the details saved on this device so you can get to quotes more quickly.
+          </p>
+          <div className="app-home-actions">
+            <button className="app-home-card" type="button" onClick={startNewQuote}>
+              <span>New quote</span>
+              <small>{hasSavedDetails ? "Choose vehicles using your saved details" : "Enter your details and choose vehicles"}</small>
             </button>
-          )
-        )}
-      </div>
+            <button className="app-home-card" type="button" onClick={() => setStep(8)}>
+              <span>Stored quotes</span>
+              <small>
+                {browserSavedQuotes.length > 0
+                  ? `${browserSavedQuotes.length.toLocaleString("en-GB")} saved from the last month`
+                  : "No recent quotes saved"}
+              </small>
+            </button>
+            <button className="app-home-card" type="button" onClick={openMyDetails}>
+              <span>My details</span>
+              <small>{hasSavedDetails ? "Review or update saved quote details" : "Set up your quote details"}</small>
+            </button>
+          </div>
+        </div>
+      )}
 
       {step === 1 && (
         <form onSubmit={nextFromDetails}>
@@ -2328,7 +2391,9 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           )}
 
           <div className="button-row">
-            <button className="secondary-service-button" type="button" onClick={() => setStep(4)}>Back to quotes</button>
+            <button className="secondary-service-button" type="button" onClick={() => setStep(IS_IOS_BUILD ? 0 : 4)}>
+              {IS_IOS_BUILD ? "Back to home" : "Back to quotes"}
+            </button>
             {browserSavedQuotes.length > 0 && (
               <button className="text-button no-print" type="button" onClick={clearBrowserSavedQuotes}>
                 Clear all saved quotes
