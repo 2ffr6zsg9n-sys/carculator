@@ -757,8 +757,14 @@ function VehiclePicker({
             <strong>{value.vehicleName}</strong>
             <span>{value.fuelType} · £{value.listPrice.toLocaleString("en-GB")}</span>
           </div>
-          <button type="button" className="text-button" onClick={() => { onChange(null); setQuery(""); }}>
-            Remove
+          <button
+            type="button"
+            className="icon-only-button danger"
+            aria-label={`Remove ${value.vehicleName}`}
+            title="Remove vehicle"
+            onClick={() => { onChange(null); setQuery(""); }}
+          >
+            <TrashIcon />
           </button>
         </div>
       ) : (

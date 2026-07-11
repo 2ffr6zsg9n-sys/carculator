@@ -691,6 +691,36 @@ button:focus {
 .icon-text-button.danger {
   color: var(--red);
 }
+.icon-only-button {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--nhs-blue);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+.icon-only-button svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon-only-button.danger {
+  color: var(--red);
+}
+.icon-only-button:hover,
+.icon-only-button:active {
+  background: #fbeae5;
+}
 
 .result-list {
   display: grid;
