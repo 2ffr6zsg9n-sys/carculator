@@ -2215,7 +2215,6 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
             If you are interested in leasing this vehicle, please email this quote to Fleet Management.
             They will send you a revised quote and include any of the following optional extras.
           </p>
-          <PrivacyNotice />
 
           <div className="question-block">
             <label htmlFor="order-full-name">Full name</label>
