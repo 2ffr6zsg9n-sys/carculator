@@ -136,8 +136,34 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   padding: 34px;
   box-shadow: 0 2px 0 rgba(11, 12, 12, .08);
 }
+.ios-app-main {
+  width: 100%;
+  min-height: calc(100vh - 10px - env(safe-area-inset-top));
+  margin: 0;
+  padding: 12px 14px calc(84px + env(safe-area-inset-bottom));
+  display: block;
+}
+.ios-app-intro {
+  position: static;
+}
+.ios-app-intro .brand-header {
+  margin-bottom: 10px;
+}
+.ios-app-intro .nhs-mark {
+  padding: 3px 7px 2px;
+  font-size: 20px;
+}
+.ios-app-intro .brand-name {
+  font-size: 21px;
+}
+.ios-app-intro .brand-subtitle {
+  font-size: 11px;
+}
 .ios-app-panel {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  border: 0;
+  box-shadow: none;
+  padding: 0 0 calc(84px + env(safe-area-inset-bottom));
+  background: transparent;
 }
 .ios-tab-bar {
   position: fixed;
@@ -231,32 +257,39 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
 .app-home {
   max-width: 760px;
 }
+.app-home h2 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
 .app-home-actions {
   display: grid;
-  gap: 16px;
-  margin-top: 24px;
+  gap: 10px;
+  margin-top: 8px;
 }
 .app-home-card {
   width: 100%;
-  border: 2px solid var(--nhs-blue);
-  border-left-width: 8px;
+  border: 1px solid #d8dde0;
+  border-left: 6px solid var(--nhs-blue);
+  border-radius: 16px;
   background: #fff;
   color: var(--text);
   cursor: pointer;
   display: grid;
-  gap: 8px;
-  padding: 22px;
+  gap: 5px;
+  min-height: 82px;
+  padding: 14px 16px;
   text-align: left;
+  box-shadow: 0 2px 8px rgba(11, 12, 12, .08);
 }
 .app-home-card span {
   color: var(--nhs-blue);
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 800;
   line-height: 1.1;
 }
 .app-home-card small {
   color: var(--text-muted);
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1.35;
 }
 .app-home-card:active,

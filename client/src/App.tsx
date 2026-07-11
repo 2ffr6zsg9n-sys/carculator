@@ -1658,23 +1658,22 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
 
       {step === 0 && (
         <div className="app-home">
-          <h2>What would you like to do?</h2>
           <div className="app-home-actions">
             <button className="app-home-card" type="button" onClick={startNewQuote}>
               <span>New quote</span>
-              <small>{hasSavedDetails ? "Choose vehicles using your saved details" : "Enter your details and choose vehicles"}</small>
+              <small>{hasSavedDetails ? "Choose vehicles" : "Enter details and choose vehicles"}</small>
             </button>
             <button className="app-home-card" type="button" onClick={() => setStep(8)}>
               <span>Stored quotes</span>
               <small>
                 {browserSavedQuotes.length > 0
-                  ? `${browserSavedQuotes.length.toLocaleString("en-GB")} saved from the last month`
+                  ? `${browserSavedQuotes.length.toLocaleString("en-GB")} saved`
                   : "No recent quotes saved"}
               </small>
             </button>
             <button className="app-home-card" type="button" onClick={openMyDetails}>
               <span>My details</span>
-              <small>{hasSavedDetails ? "Review or update saved quote details" : "Set up your quote details"}</small>
+              <small>{hasSavedDetails ? "Review or update details" : "Set up quote details"}</small>
             </button>
           </div>
         </div>
@@ -3750,10 +3749,10 @@ export function App() {
 
   return (
     <>
-      <main>
-        <section className="intro">
+      <main className={IS_IOS_BUILD ? "ios-app-main" : undefined}>
+        <section className={IS_IOS_BUILD ? "intro ios-app-intro" : "intro"}>
           <BrandHeader />
-          <h1>CARculator</h1>
+          {!IS_IOS_BUILD && <h1>CARculator</h1>}
           {!IS_IOS_BUILD && (
             <p>Answer a few questions, choose up to five vehicles, and compare the estimated net monthly cost.</p>
           )}
