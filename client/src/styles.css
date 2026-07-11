@@ -473,6 +473,9 @@ textarea {
   min-height: 110px;
   resize: vertical;
 }
+.optional-extras-textarea {
+  min-height: 180px;
+}
 select {
   appearance: none;
   background-image:

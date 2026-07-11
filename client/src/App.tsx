@@ -238,12 +238,13 @@ function PrivacyNotice() {
     <div className="notice privacy-notice">
       <h3>Privacy notice</h3>
       <p>
-        CARculator stores the quote details, quote reference, date and time, IP address, and device/access information
-        for audit and support purposes. We do not store your name, employee number, or email address.
+        CARculator stores quote details in the Fleet Management database, including the quote reference, date and time,
+        IP address, and device/access information for audit and support purposes. We do not store your name, employee number,
+        or email address.
       </p>
       <p>
-        If you choose “Remember my details on this device”, your calculator choices are saved only on this device.
-        They are not sent to or stored in the CARculator database for this purpose.
+        If you choose “Remember my details on this device”, your calculator choices are saved on this device.
+        Saved quotes are also stored on this device so you can return to them later.
       </p>
     </div>
   );
@@ -1830,7 +1831,8 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
             <p>
               CARculator is intended only for employees of South West Yorkshire Partnership NHS FT.
               We will save your employer, tax, pension, mileage, and National Minimum Wage choices on this device.
-              We do not store your name, employee number, or email address.
+              Quotes are stored on this device so you can return to them later, and a copy of each quote is saved to the
+              Fleet Management database. We do not store your name, employee number, or email address.
             </p>
             <label className="checkbox-row">
               <input
@@ -2398,6 +2400,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
             <label htmlFor="order-optional-extras">Optional Extras</label>
             <textarea
               id="order-optional-extras"
+              className="optional-extras-textarea"
               value={orderForm.optionalExtras}
               onChange={(event) => updateOrderForm("optionalExtras", event.target.value)}
               placeholder="Enter any optional extras you would like Fleet Management to include."
@@ -2626,7 +2629,8 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
         <div>
           <h2>Saved quotes on this device</h2>
           <p className="form-hint">
-            These quotes are stored only on {LOCAL_STORAGE_LOCATION}. Quotes are kept for up to one month and the most recent {maxBrowserSavedQuotes} are retained.
+            These quotes are stored on {LOCAL_STORAGE_LOCATION} so you can return to them later. A copy of each quote is also saved to the Fleet Management database.
+            Quotes are kept on {LOCAL_STORAGE_LOCATION} for up to one month and the most recent {maxBrowserSavedQuotes} are retained.
           </p>
           {!IS_IOS_BUILD && (
             <div className="notice">
