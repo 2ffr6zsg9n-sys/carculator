@@ -847,7 +847,7 @@ function AppTabIcon({ name }: { name: AppTabIconName }) {
 }
 
 function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: string; onOpenTaxEstimator?: () => void }) {
-  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>(1);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [incomeTaxRates, setIncomeTaxRates] = useState<IncomeTaxRate[]>([]);
   const [pensionRates, setPensionRates] = useState<PensionRate[]>([]);
@@ -973,8 +973,8 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
         setHasSavedDetails(Boolean(remembered));
         setRememberDetails(IS_IOS_BUILD || Boolean(remembered));
         setStorageConsent(!IS_IOS_BUILD || Boolean(remembered));
-        if (IS_IOS_BUILD && (remembered || readBrowserSavedQuotes().length > 0)) {
-          setStep(0);
+        if (IS_IOS_BUILD) {
+          setStep(remembered || readBrowserSavedQuotes().length > 0 ? 0 : 9);
         }
         setStatus({ type: "idle" });
       } catch (error) {
@@ -1072,6 +1072,11 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
   }
 
   function startNewQuote() {
+    if (IS_IOS_BUILD && !hasSavedDetails) {
+      setStatus({ type: "idle" });
+      setStep(9);
+      return;
+    }
     setVehicles([null, null, null, null, null]);
     setResults([]);
     setOfferResults([]);
@@ -1082,6 +1087,16 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
   }
 
   function openMyDetails() {
+    setStatus({ type: "idle" });
+    setStep(IS_IOS_BUILD && !hasSavedDetails ? 9 : 1);
+  }
+
+  function startRegistrationSetup(event: FormEvent) {
+    event.preventDefault();
+    if (!storageConsent) {
+      setStatus({ type: "error", message: "Please confirm you are happy for CARculator to save your details on this device." });
+      return;
+    }
     setStatus({ type: "idle" });
     setStep(1);
   }
@@ -1102,9 +1117,6 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
   }
 
   function validateNMW() {
-    if (IS_IOS_BUILD && !hasSavedDetails && !storageConsent) {
-      return "Please confirm you are happy for CARculator to save these details on this device.";
-    }
     if (skipNMW) return "";
     if (!selectedNMWRate) return "Please choose your age range.";
     if (isAgendaForChange === "yes" && !selectedAFCPayRate) {
@@ -1549,10 +1561,10 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
       window.localStorage.removeItem(rememberedDetailsKey);
     }
     setStatus({ type: "idle" });
-    setStep(3);
+    setStep(IS_IOS_BUILD ? 0 : 3);
   }
 
-  if (status.type === "loading" && step === 1 && employers.length === 0) {
+  if (status.type === "loading" && employers.length === 0) {
     return <section className="service-panel"><p className="loading-note">Loading the calculator…</p></section>;
   }
 
@@ -1619,10 +1631,10 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
         <nav className="ios-tab-bar no-print" aria-label="CARculator sections">
           <button
             type="button"
-            className={step === 0 ? "active" : ""}
+            className={step === 0 || step === 9 ? "active" : ""}
             onClick={() => {
               setStatus({ type: "idle" });
-              setStep(0);
+              setStep(hasSavedDetails || browserSavedQuotes.length > 0 ? 0 : 9);
             }}
           >
             <AppTabIcon name="home" />
@@ -1631,6 +1643,8 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           <button
             type="button"
             className={step === 3 || step === 4 || step === 6 || step === 7 ? "active" : ""}
+            disabled={!hasSavedDetails}
+            aria-disabled={!hasSavedDetails}
             onClick={startNewQuote}
           >
             <AppTabIcon name="quote" />
@@ -1639,6 +1653,8 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           <button
             type="button"
             className={step === 8 ? "active" : ""}
+            disabled={browserSavedQuotes.length === 0}
+            aria-disabled={browserSavedQuotes.length === 0}
             onClick={() => {
               setStatus({ type: "idle" });
               setStep(8);
@@ -1649,13 +1665,40 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           </button>
           <button
             type="button"
-            className={step === 1 || step === 2 ? "active" : ""}
+            className={step === 1 || step === 2 || step === 9 ? "active" : ""}
             onClick={openMyDetails}
           >
             <AppTabIcon name="details" />
             <span>My Details</span>
           </button>
         </nav>
+      )}
+
+      {step === 9 && (
+        <form className="app-setup" onSubmit={startRegistrationSetup}>
+          <h2>Set up CARculator</h2>
+          <p className="form-hint">
+            CARculator saves your calculator preferences on this iPhone so future quotes are quicker to prepare.
+          </p>
+          <div className="notice registration-consent-panel">
+            <h3>Your data</h3>
+            <p>
+              We will save your employer, tax, pension, mileage, and National Minimum Wage choices on this device.
+              We do not store your name, employee number, or email address.
+            </p>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={storageConsent}
+                onChange={(event) => setStorageConsent(event.target.checked)}
+                required
+              />
+              I am happy for CARculator to save these details on this device.
+            </label>
+          </div>
+          {status.type === "error" && <div className="message error">{status.message}</div>}
+          <button className="service-button" type="submit">Start setup</button>
+        </form>
       )}
 
       {step === 0 && (
@@ -1913,24 +1956,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
                   Delete saved details
                 </button>
               </div>
-            ) : (
-              <div className="notice remember-details-panel registration-consent-panel">
-                <h3>Save your details</h3>
-                <p>
-                  CARculator will save your employer, tax, pension, mileage, and National Minimum Wage choices on this device
-                  so you do not need to re-enter them next time. We do not store your name, employee number, or email address.
-                </p>
-                <label className="checkbox-row">
-                  <input
-                    type="checkbox"
-                    checked={storageConsent}
-                    onChange={(event) => setStorageConsent(event.target.checked)}
-                    required
-                  />
-                  I am happy for CARculator to save these details on this device.
-                </label>
-              </div>
-            )
+            ) : null
           ) : (
             <div className="notice remember-details-panel">
               <label className="checkbox-row">

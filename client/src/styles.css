@@ -209,6 +209,13 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
 .ios-tab-bar button.active {
   color: var(--nhs-blue);
 }
+.ios-tab-bar button:disabled {
+  color: #c7cbd1;
+  cursor: default;
+}
+.ios-tab-bar button:disabled:active svg {
+  transform: none;
+}
 .ios-tab-bar svg {
   width: 36px;
   height: 36px;
@@ -267,6 +274,12 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
 }
 .app-home {
   max-width: 760px;
+}
+.app-setup {
+  max-width: 760px;
+}
+.app-setup .service-button {
+  width: 100%;
 }
 .app-home h2 {
   font-size: 28px;
