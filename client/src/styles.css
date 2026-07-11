@@ -23,6 +23,15 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 button, input, select, textarea { font: inherit; }
+.inline-link-button {
+  border: 0;
+  background: transparent;
+  color: #1d70b8;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 body::before {
   content: "";

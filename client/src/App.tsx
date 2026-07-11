@@ -846,7 +846,7 @@ function AppTabIcon({ name }: { name: AppTabIconName }) {
   );
 }
 
-function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
+function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: string; onOpenTaxEstimator?: () => void }) {
   const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [incomeTaxRates, setIncomeTaxRates] = useState<IncomeTaxRate[]>([]);
@@ -893,9 +893,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [status, setStatus] = useState<{ type: "idle" | "loading" | "error"; message?: string }>({ type: "loading" });
 
   useEffect(() => {
-    if ([4, 5, 6, 7, 8].includes(step)) {
-      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-    }
+    window.scrollTo({ top: 0, left: 0, behavior: IS_IOS_BUILD ? "auto" : "smooth" });
   }, [step]);
 
   useEffect(() => {
@@ -1720,9 +1718,15 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             <label htmlFor="income-tax">What level of income tax do you pay?</label>
             <p className="field-hint">
               Not sure?{" "}
-              <a href="#tax-estimator" target="_blank" rel="noopener noreferrer">
-                Estimate your tax rate using your payslip
-              </a>.
+              {IS_IOS_BUILD ? (
+                <button className="inline-link-button" type="button" onClick={onOpenTaxEstimator}>
+                  Estimate your tax rate using your payslip
+                </button>
+              ) : (
+                <a href="#tax-estimator" target="_blank" rel="noopener noreferrer">
+                  Estimate your tax rate using your payslip
+                </a>
+              )}.
             </p>
             <select id="income-tax" value={taxBand} onChange={(event) => setTaxBand(event.target.value)} required>
               {incomeTaxRates.map((rate) => (
@@ -3496,7 +3500,7 @@ function AdminTable({ config, apiKey }: { config: AdminTableConfig; apiKey: stri
   );
 }
 
-function TaxEstimatorPage() {
+function TaxEstimatorPage({ onClose }: { onClose?: () => void }) {
   const [taxCode, setTaxCode] = useState("");
   const [payslipMonth, setPayslipMonth] = useState("");
   const [yearToDateTaxablePay, setYearToDateTaxablePay] = useState("");
@@ -3664,8 +3668,8 @@ function TaxEstimatorPage() {
           </div>
 
           <div className="button-row">
-            <button className="service-button" type="button" onClick={() => window.close()}>
-              Close this window
+            <button className="service-button" type="button" onClick={onClose ?? (() => window.close())}>
+              {onClose ? "Back to CARculator" : "Close this window"}
             </button>
           </div>
         </section>
@@ -3744,7 +3748,7 @@ export function App() {
   }
 
   if (view === "tax-estimator") {
-    return <TaxEstimatorPage />;
+    return <TaxEstimatorPage onClose={IS_IOS_BUILD ? () => setView("quote") : undefined} />;
   }
 
   if (!quoteApiKey) {
@@ -3792,7 +3796,7 @@ export function App() {
           )}
         </section>
 
-        <QuoteRequestPage quoteApiKey={quoteApiKey} />
+        <QuoteRequestPage quoteApiKey={quoteApiKey} onOpenTaxEstimator={() => setView("tax-estimator")} />
       </main>
       <CopyrightFooter />
     </>
