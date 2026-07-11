@@ -816,35 +816,32 @@ function AppTabIcon({ name }: { name: AppTabIconName }) {
   if (name === "home") {
     return (
       <svg viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M5.5 15.2 16 6.4l10.5 8.8" />
-        <path d="M8.4 13.6v12h5.2v-7.1h4.8v7.1h5.2v-12" />
-        <path d="M22.4 8.9v4" />
+        <path d="M5.8 16.2 16 7.3l10.2 8.9" />
+        <path d="M9.2 14.5v10.8h5v-6.5h3.6v6.5h5V14.5" />
+        <path d="M22.6 9.8v4.1" />
       </svg>
     );
   }
   if (name === "quote") {
     return (
       <svg viewBox="0 0 32 32" aria-hidden="true">
-        <rect x="9" y="4.5" width="14" height="23" rx="3" />
-        <path d="M12.4 9.2h7.2" />
-        <path d="M12.7 14h1.8M17.5 14h1.8M12.7 18.7h1.8M17.5 18.7h1.8M12.7 23.4h1.8M17.5 23.4h1.8" />
+        <rect x="8.8" y="5.2" width="14.4" height="21.6" rx="2.8" />
+        <path d="M12.2 9.5h7.6" />
+        <path d="M12.4 14.4h1.8M17.8 14.4h1.8M12.4 18.7h1.8M17.8 18.7h1.8M12.4 23h1.8M17.8 23h1.8" />
       </svg>
     );
   }
   if (name === "saved") {
     return (
       <svg viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M7.5 6.5h14.8l2.2 2.2v16.8h-17z" />
-        <path d="M11 6.5v6h9v-6" />
-        <path d="M11 25.5v-8h10v8" />
-        <path d="M13.4 9.5h3.5" />
+        <path d="M16 25.1 7.7 17c-2.4-2.4-2.6-6.1-.4-8.2 2.2-2.2 5.7-1.7 7.7.8l1 1.2 1-1.2c2-2.5 5.5-3 7.7-.8 2.2 2.1 2 5.8-.4 8.2z" />
       </svg>
     );
   }
   return (
     <svg viewBox="0 0 32 32" aria-hidden="true">
-      <circle cx="16" cy="10" r="4.3" />
-      <path d="M7.2 26c1.1-5.6 4-8.4 8.8-8.4s7.7 2.8 8.8 8.4" />
+      <circle cx="16" cy="9.5" r="3.7" />
+      <path d="M7.7 25.7c1.1-5.5 3.9-8.2 8.3-8.2s7.2 2.7 8.3 8.2" />
     </svg>
   );
 }
@@ -1661,20 +1658,29 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         <div className="app-home">
           <div className="app-home-actions">
             <button className="app-home-card" type="button" onClick={startNewQuote}>
-              <span>New quote</span>
-              <small>{hasSavedDetails ? "Choose vehicles" : "Enter details and choose vehicles"}</small>
+              <span className="app-home-card-icon"><AppTabIcon name="quote" /></span>
+              <span className="app-home-card-text">
+                <strong>New quote</strong>
+                <small>{hasSavedDetails ? "Choose vehicles" : "Enter details and choose vehicles"}</small>
+              </span>
             </button>
             <button className="app-home-card" type="button" onClick={() => setStep(8)}>
-              <span>Stored quotes</span>
-              <small>
-                {browserSavedQuotes.length > 0
-                  ? `${browserSavedQuotes.length.toLocaleString("en-GB")} saved`
-                  : "No recent quotes saved"}
-              </small>
+              <span className="app-home-card-icon"><AppTabIcon name="saved" /></span>
+              <span className="app-home-card-text">
+                <strong>Stored quotes</strong>
+                <small>
+                  {browserSavedQuotes.length > 0
+                    ? `${browserSavedQuotes.length.toLocaleString("en-GB")} saved`
+                    : "No recent quotes saved"}
+                </small>
+              </span>
             </button>
             <button className="app-home-card" type="button" onClick={openMyDetails}>
-              <span>My details</span>
-              <small>{hasSavedDetails ? "Review or update details" : "Set up quote details"}</small>
+              <span className="app-home-card-icon"><AppTabIcon name="details" /></span>
+              <span className="app-home-card-text">
+                <strong>My details</strong>
+                <small>{hasSavedDetails ? "Review or update details" : "Set up quote details"}</small>
+              </span>
             </button>
           </div>
         </div>

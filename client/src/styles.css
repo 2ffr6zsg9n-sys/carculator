@@ -201,11 +201,11 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   color: var(--nhs-blue);
 }
 .ios-tab-bar svg {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.2;
+  stroke-width: 2.35;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -272,14 +272,33 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   background: #fff;
   color: var(--text);
   cursor: pointer;
-  display: grid;
-  gap: 5px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
   min-height: 82px;
   padding: 14px 16px;
   text-align: left;
   box-shadow: 0 2px 8px rgba(11, 12, 12, .08);
 }
-.app-home-card span {
+.app-home-card-icon {
+  color: var(--nhs-blue);
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.app-home-card-icon svg {
+  width: 36px;
+  height: 36px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.app-home-card-text {
+  display: grid;
+  gap: 4px;
+}
+.app-home-card strong {
   color: var(--nhs-blue);
   font-size: 22px;
   font-weight: 800;
