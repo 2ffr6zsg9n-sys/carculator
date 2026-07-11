@@ -1842,6 +1842,18 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
                 <small>{hasSavedDetails ? "Choose vehicles" : "Enter details and choose vehicles"}</small>
               </span>
             </button>
+            <button
+              className="app-home-card"
+              type="button"
+              disabled={!hasSavedDetails || status.type === "loading"}
+              onClick={() => void calculateOfferQuotes()}
+            >
+              <span className="app-home-card-icon"><AppTabIcon name="offers" /></span>
+              <span className="app-home-card-text">
+                <strong>Offers</strong>
+                <small>{status.type === "loading" ? "Loading offers…" : "View current deals"}</small>
+              </span>
+            </button>
             <button className="app-home-card" type="button" onClick={() => setStep(8)}>
               <span className="app-home-card-icon"><AppTabIcon name="saved" /></span>
               <span className="app-home-card-text">

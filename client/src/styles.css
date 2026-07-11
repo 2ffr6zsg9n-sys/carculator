@@ -343,6 +343,17 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
 .app-home-card:hover {
   background: var(--nhs-light-blue);
 }
+.app-home-card:disabled {
+  cursor: default;
+  opacity: .55;
+}
+.app-home-card:disabled:active,
+.app-home-card:disabled:hover {
+  background: #fff;
+}
+.app-home-card:disabled .app-home-card-icon svg {
+  transform: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .ios-tab-bar svg,
   .app-home-card-icon svg {
