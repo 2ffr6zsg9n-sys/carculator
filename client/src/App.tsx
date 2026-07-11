@@ -1879,6 +1879,18 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                   )}
                   <p>{result.vehicle.fuelType} · List price {currency(result.vehicle.listPrice)} · BIK {percent(result.bikRate)} ({result.bikSource})</p>
                 </div>
+                <button
+                  className="secondary-service-button no-print"
+                  type="button"
+                  onClick={() => {
+                    setSelectedBreakdownResult(result);
+                    setResultReturnStep(4);
+                    setStatus({ type: "idle" });
+                    setStep(6);
+                  }}
+                >
+                  View cost breakdown
+                </button>
                 {result.nmwBlocked ? (
                   <div className="message error">
                     This car would take the estimated hourly rate to {currency(result.nmwHourlyRate ?? 0)}, which is below the National Minimum Wage rate of {currency(result.nmwMinimumRate ?? 0)} for the selected age range.
@@ -2164,6 +2176,18 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                   )}
                   <p>Deal/Offer · {result.vehicle.fuelType} · List price {currency(result.vehicle.listPrice)} · BIK {percent(result.bikRate)} ({result.bikSource})</p>
                 </div>
+                <button
+                  className="secondary-service-button no-print"
+                  type="button"
+                  onClick={() => {
+                    setSelectedBreakdownResult(result);
+                    setResultReturnStep(7);
+                    setStatus({ type: "idle" });
+                    setStep(6);
+                  }}
+                >
+                  View cost breakdown
+                </button>
                 {result.nmwBlocked ? (
                   <div className="message error">
                     This car would take the estimated hourly rate to {currency(result.nmwHourlyRate ?? 0)}, which is below the National Minimum Wage rate of {currency(result.nmwMinimumRate ?? 0)} for the selected age range.
