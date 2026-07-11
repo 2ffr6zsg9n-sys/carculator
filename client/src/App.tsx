@@ -2630,7 +2630,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           <h2>Saved quotes on this device</h2>
           <p className="form-hint">
             These quotes are stored on {LOCAL_STORAGE_LOCATION} so you can return to them later. A copy of each quote is also saved to the Fleet Management database.
-            Quotes are kept on {LOCAL_STORAGE_LOCATION} for up to one month and the most recent {maxBrowserSavedQuotes} are retained.
+            Saved quotes older than one month are removed from {LOCAL_STORAGE_LOCATION} when you next use CARculator, and only the most recent {maxBrowserSavedQuotes} saved quotes are kept on {LOCAL_STORAGE_LOCATION}.
           </p>
           {!IS_IOS_BUILD && (
             <div className="notice">
