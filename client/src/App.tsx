@@ -407,6 +407,15 @@ function quoteAnnualMileage(quote: QuoteResult | BrowserSavedQuote, fallbackMile
   return isBrowserSavedQuote(quote) ? quote.annualMileage : fallbackMileage;
 }
 
+function plainTextFormSection(title: string, rows: [string, string][]) {
+  const labelWidth = Math.min(32, Math.max(...rows.map(([label]) => label.length), 0));
+  return [
+    title.toUpperCase(),
+    "-".repeat(title.length),
+    ...rows.map(([label, value]) => `${label.padEnd(labelWidth, " ")} : ${value}`)
+  ].join("\n");
+}
+
 const adminTables: AdminTableConfig[] = [
   {
     slug: "employers",
@@ -1197,14 +1206,16 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
     const nmwStatus = result.nmwSkipped
       ? "Eligibility subject to National Minimum Wage check"
       : "National Minimum Wage check completed in CARculator";
-    const rows = [
+    const employeeRows: [string, string][] = [
       ["Quote reference", result.quoteReference ? String(result.quoteReference) : "Not available"],
       ["Deal/Offer quote", result.isOnOfferQuote ? "Yes" : "No"],
       ["Full name", orderForm.fullName],
       ["Email address", orderForm.emailAddress],
+      ["Employer", selectedEmployer?.organisation ?? "Not selected"]
+    ];
+    const vehicleRows: [string, string][] = [
       ["Vehicle", quoteVehicleName(result)],
       ["Fuel type", quoteFuelType(result)],
-      ["Employer", selectedEmployer?.organisation ?? "Not selected"],
       ["Annual mileage", `${quoteAnnualMileage(result, annualMileage).toLocaleString("en-GB")} miles`],
       ["List price", currency(quoteListPrice(result))],
       ...(isBrowserSavedQuote(result) ? [
@@ -1216,7 +1227,9 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
       ]),
       ["Monthly salary sacrifice", currency(result.salarySacrificeMonthly)],
       ["Estimated monthly cost", currency(result.netMonthly)],
-      ["NMW status", nmwStatus],
+      ["NMW status", nmwStatus]
+    ];
+    const preferencesRows: [string, string][] = [
       ["Body colour", orderForm.bodyColour],
       ["Interior colour/trim", orderForm.interiorColour],
       ["Optional extras", extras],
@@ -1226,7 +1239,11 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
     const body = [
       "I am interested in ordering the following vehicle.",
       "",
-      ...rows.map(([label, value]) => `${label}: ${value}`),
+      plainTextFormSection("Employee details", employeeRows),
+      "",
+      plainTextFormSection("Vehicle quote", vehicleRows),
+      "",
+      plainTextFormSection("Order preferences", preferencesRows),
       "",
       "Please prepare a revised quote, including any optional extras, and advise on the next steps for ordering the vehicle."
     ].join("\n");
