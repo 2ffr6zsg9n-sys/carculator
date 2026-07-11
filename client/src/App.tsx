@@ -810,7 +810,7 @@ function VehiclePicker({
   );
 }
 
-type AppTabIconName = "home" | "quote" | "saved" | "details";
+type AppTabIconName = "home" | "quote" | "offers" | "saved" | "details";
 
 function AppTabIcon({ name }: { name: AppTabIconName }) {
   if (name === "home") {
@@ -838,10 +838,29 @@ function AppTabIcon({ name }: { name: AppTabIconName }) {
       </svg>
     );
   }
+  if (name === "offers") {
+    return (
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M7.2 17.1 17.1 7.2h7.7v7.7l-9.9 9.9a2.3 2.3 0 0 1-3.3 0l-4.4-4.4a2.3 2.3 0 0 1 0-3.3z" />
+        <circle cx="21.2" cy="10.8" r="1.4" />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 32 32" aria-hidden="true">
       <circle cx="16" cy="9.5" r="3.7" />
       <path d="M7.7 25.7c1.1-5.5 3.9-8.2 8.3-8.2s7.2 2.7 8.3 8.2" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4.5 6.5h15" />
+      <path d="M9 6.5V4.8h6v1.7" />
+      <path d="M7 6.5 8 20h8l1-13.5" />
+      <path d="M10.5 10v6.5M13.5 10v6.5" />
     </svg>
   );
 }
@@ -943,10 +962,15 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
             ? remembered.employerId
             : defaultEmployerId
         );
+        const estimatorRate = Number(window.sessionStorage.getItem("carculator-estimated-tax-rate"));
+        const estimatorTaxBand = Number.isFinite(estimatorRate)
+          ? taxBody.items.find((rate: IncomeTaxRate) => Math.abs(normaliseRate(rate.taxRate) - estimatorRate) < 0.001)?.taxBand
+          : "";
         setTaxBand(
-          remembered && taxBody.items.some((rate: IncomeTaxRate) => rate.taxBand === remembered.taxBand)
-            ? remembered.taxBand
-            : defaultTaxBand
+          estimatorTaxBand
+            || (remembered && taxBody.items.some((rate: IncomeTaxRate) => rate.taxBand === remembered.taxBand)
+              ? remembered.taxBand
+              : defaultTaxBand)
         );
         setPaysPension(remembered?.paysPension === "yes" || remembered?.paysPension === "no" ? remembered.paysPension : "");
         setPensionTier(
@@ -974,7 +998,10 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
         setRememberDetails(IS_IOS_BUILD || Boolean(remembered));
         setStorageConsent(!IS_IOS_BUILD || Boolean(remembered));
         if (IS_IOS_BUILD) {
-          setStep(remembered || readBrowserSavedQuotes().length > 0 ? 0 : 9);
+          const returnStep = window.sessionStorage.getItem("carculator-return-step");
+          window.sessionStorage.removeItem("carculator-return-step");
+          window.sessionStorage.removeItem("carculator-estimated-tax-rate");
+          setStep(returnStep === "details" ? 1 : remembered || readBrowserSavedQuotes().length > 0 ? 0 : 9);
         }
         setStatus({ type: "idle" });
       } catch (error) {
@@ -1652,6 +1679,16 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           </button>
           <button
             type="button"
+            className={step === 7 ? "active" : ""}
+            disabled={!hasSavedDetails || status.type === "loading"}
+            aria-disabled={!hasSavedDetails || status.type === "loading"}
+            onClick={() => void calculateOfferQuotes()}
+          >
+            <AppTabIcon name="offers" />
+            <span>Offers</span>
+          </button>
+          <button
+            type="button"
             className={step === 8 ? "active" : ""}
             disabled={browserSavedQuotes.length === 0}
             aria-disabled={browserSavedQuotes.length === 0}
@@ -2064,6 +2101,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           <p className="form-hint">
             These estimates use the cheapest available rental for each selected vehicle at {annualMileage.toLocaleString("en-GB")} miles per year.
           </p>
+          {!IS_IOS_BUILD && (
           <div className="button-row no-print">
             <button className="service-button" type="button" onClick={() => window.print()}>
               Save as PDF / Print
@@ -2077,6 +2115,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
               {status.type === "loading" ? "Loading Deals/Offers…" : "View Deals/Offers"}
             </button>
           </div>
+          )}
 
           <div className="result-list">
             {results.map((result) => (
@@ -2140,6 +2179,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
             ))}
           </div>
 
+          {!IS_IOS_BUILD && (
           <div className="button-row">
             <button className="secondary-service-button" type="button" onClick={() => setStep(3)}>Back to vehicles</button>
             <button className="service-button no-print" type="button" onClick={() => window.print()}>Save as PDF / Print</button>
@@ -2158,6 +2198,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
             </button>
             <button className="service-button" type="button" onClick={() => setStep(1)}>Start again</button>
           </div>
+          )}
           {status.type === "error" && <div className="message error">{status.message}</div>}
         </div>
       )}
@@ -2357,9 +2398,11 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           <p className="form-hint">
             These Deals/Offers use vehicles currently flagged as on offer and the cheapest available rental at {annualMileage.toLocaleString("en-GB")} miles per year.
           </p>
+          {!IS_IOS_BUILD && (
           <button className="service-button no-print" type="button" onClick={() => window.print()}>
             Save as PDF / Print
           </button>
+          )}
 
           <div className="result-list">
             {offerResults.map((result) => (
@@ -2428,6 +2471,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           )}
           {status.type === "error" && <div className="message error">{status.message}</div>}
 
+          {!IS_IOS_BUILD && (
           <div className="button-row">
             <button className="secondary-service-button" type="button" onClick={() => setStep(4)}>Back to your quotes</button>
             <button className="service-button no-print" type="button" onClick={() => window.print()}>Save as PDF / Print</button>
@@ -2437,6 +2481,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
               </button>
             )}
           </div>
+          )}
         </div>
       )}
 
@@ -2498,8 +2543,9 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
                   >
                     Select Vehicle
                   </button>
-                  <button className="text-button no-print" type="button" onClick={() => deleteBrowserSavedQuote(quote.savedQuoteId)}>
-                    Delete saved quote
+                  <button className="icon-text-button danger no-print" type="button" onClick={() => deleteBrowserSavedQuote(quote.savedQuoteId)}>
+                    <TrashIcon />
+                    <span>Remove</span>
                   </button>
                 </div>
               </article>
@@ -3526,7 +3572,7 @@ function AdminTable({ config, apiKey }: { config: AdminTableConfig; apiKey: stri
   );
 }
 
-function TaxEstimatorPage({ onClose }: { onClose?: () => void }) {
+function TaxEstimatorPage({ onClose }: { onClose?: (estimatedRate?: number) => void }) {
   const [taxCode, setTaxCode] = useState("");
   const [payslipMonth, setPayslipMonth] = useState("");
   const [yearToDateTaxablePay, setYearToDateTaxablePay] = useState("");
@@ -3694,7 +3740,14 @@ function TaxEstimatorPage({ onClose }: { onClose?: () => void }) {
           </div>
 
           <div className="button-row">
-            <button className="service-button" type="button" onClick={onClose ?? (() => window.close())}>
+            <button
+              className="service-button"
+              type="button"
+              onClick={() => {
+                onClose?.(submittedEstimate?.estimatedRate);
+                if (!onClose) window.close();
+              }}
+            >
               {onClose ? "Back to CARculator" : "Close this window"}
             </button>
           </div>
@@ -3774,7 +3827,19 @@ export function App() {
   }
 
   if (view === "tax-estimator") {
-    return <TaxEstimatorPage onClose={IS_IOS_BUILD ? () => setView("quote") : undefined} />;
+    return (
+      <TaxEstimatorPage
+        onClose={IS_IOS_BUILD
+          ? (estimatedRate) => {
+              window.sessionStorage.setItem("carculator-return-step", "details");
+              if (typeof estimatedRate === "number") {
+                window.sessionStorage.setItem("carculator-estimated-tax-rate", String(estimatedRate));
+              }
+              setView("quote");
+            }
+          : undefined}
+      />
+    );
   }
 
   if (!quoteApiKey) {
