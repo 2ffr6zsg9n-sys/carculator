@@ -871,6 +871,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [annualMileage, setAnnualMileage] = useState(6000);
   const [hasSavedDetails, setHasSavedDetails] = useState(() => readRememberedQuoteDetails() !== null);
   const [rememberDetails, setRememberDetails] = useState(() => IS_IOS_BUILD || readRememberedQuoteDetails() !== null);
+  const [storageConsent, setStorageConsent] = useState(() => !IS_IOS_BUILD || readRememberedQuoteDetails() !== null);
   const [vehicleType, setVehicleType] = useState("");
   const [maxMonthlyCost, setMaxMonthlyCost] = useState("");
   const [vehicles, setVehicles] = useState<(Vehicle | null)[]>([null, null, null, null, null]);
@@ -973,6 +974,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         setAnnualMileage(mileageOptions.includes(Number(remembered?.annualMileage)) ? Number(remembered?.annualMileage) : 6000);
         setHasSavedDetails(Boolean(remembered));
         setRememberDetails(IS_IOS_BUILD || Boolean(remembered));
+        setStorageConsent(!IS_IOS_BUILD || Boolean(remembered));
         if (IS_IOS_BUILD && (remembered || readBrowserSavedQuotes().length > 0)) {
           setStep(0);
         }
@@ -1042,6 +1044,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     window.sessionStorage.removeItem("lease-car-quote-key");
     setHasSavedDetails(false);
     setRememberDetails(false);
+    setStorageConsent(!IS_IOS_BUILD);
   }
 
   function saveQuotesToBrowser(quotes: QuoteResult[]) {
@@ -1101,6 +1104,9 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   }
 
   function validateNMW() {
+    if (IS_IOS_BUILD && !hasSavedDetails && !storageConsent) {
+      return "Please confirm you are happy for CARculator to save these details on this device.";
+    }
     if (skipNMW) return "";
     if (!selectedNMWRate) return "Please choose your age range.";
     if (isAgendaForChange === "yes" && !selectedAFCPayRate) {
@@ -1539,7 +1545,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
       setStatus({ type: "error", message: error });
       return;
     }
-    if (IS_IOS_BUILD || rememberDetails) {
+    if ((IS_IOS_BUILD && storageConsent) || rememberDetails) {
       saveRememberedQuoteDetails();
     } else {
       window.localStorage.removeItem(rememberedDetailsKey);
@@ -1892,16 +1898,35 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           )}
 
           {IS_IOS_BUILD ? (
-            <div className="notice remember-details-panel">
-              <h3>Details saved on this device</h3>
-              <p>
-                CARculator saves your employer, tax, pension, mileage, and National Minimum Wage choices on this device
-                so you do not need to re-enter them next time. We do not store your name, employee number, or email address.
-              </p>
-              <button className="text-button" type="button" onClick={clearRememberedQuoteDetails}>
-                Delete saved details
-              </button>
-            </div>
+            hasSavedDetails ? (
+              <div className="notice remember-details-panel">
+                <h3>Details saved on this device</h3>
+                <p>
+                  CARculator saves your employer, tax, pension, mileage, and National Minimum Wage choices on this device.
+                  We do not store your name, employee number, or email address.
+                </p>
+                <button className="text-button" type="button" onClick={clearRememberedQuoteDetails}>
+                  Delete saved details
+                </button>
+              </div>
+            ) : (
+              <div className="notice remember-details-panel registration-consent-panel">
+                <h3>Save your details</h3>
+                <p>
+                  CARculator will save your employer, tax, pension, mileage, and National Minimum Wage choices on this device
+                  so you do not need to re-enter them next time. We do not store your name, employee number, or email address.
+                </p>
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={storageConsent}
+                    onChange={(event) => setStorageConsent(event.target.checked)}
+                    required
+                  />
+                  I am happy for CARculator to save these details on this device.
+                </label>
+              </div>
+            )
           ) : (
             <div className="notice remember-details-panel">
               <label className="checkbox-row">
@@ -2391,9 +2416,11 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <p className="form-hint">
             These quotes are stored only on {LOCAL_STORAGE_LOCATION}. Quotes are kept for up to one month and the most recent {maxBrowserSavedQuotes} are retained.
           </p>
-          <div className="notice">
-            Do not use this option on a shared device. If you no longer want quotes stored on {LOCAL_STORAGE_LOCATION}, use “Clear all saved quotes”.
-          </div>
+          {!IS_IOS_BUILD && (
+            <div className="notice">
+              Do not use this option on a shared device. If you no longer want quotes stored on {LOCAL_STORAGE_LOCATION}, use “Clear all saved quotes”.
+            </div>
+          )}
 
           <div className="result-list">
             {browserSavedQuotes.map((quote) => (

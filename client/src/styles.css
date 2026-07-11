@@ -416,6 +416,11 @@ button:focus {
   margin: 0 0 12px;
   font-weight: 400;
 }
+.registration-consent-panel .checkbox-row {
+  align-items: flex-start;
+  font-weight: 700;
+  line-height: 1.35;
+}
 
 .service-button,
 .submit-button,
