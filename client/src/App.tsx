@@ -1763,7 +1763,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           </button>
           <button
             type="button"
-            className={step === 3 || step === 4 || step === 6 || step === 7 ? "active" : ""}
+            className={step === 3 || step === 4 || step === 6 ? "active" : ""}
             disabled={!hasSavedDetails}
             aria-disabled={!hasSavedDetails}
             onClick={startNewQuote}
