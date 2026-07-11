@@ -815,35 +815,36 @@ type AppTabIconName = "home" | "quote" | "saved" | "details";
 function AppTabIcon({ name }: { name: AppTabIconName }) {
   if (name === "home") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M3 11.2 12 4l9 7.2" />
-        <path d="M5.5 10.5V20h4.2v-5.6h4.6V20h4.2v-9.5" />
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M5.5 15.2 16 6.4l10.5 8.8" />
+        <path d="M8.4 13.6v12h5.2v-7.1h4.8v7.1h5.2v-12" />
+        <path d="M22.4 8.9v4" />
       </svg>
     );
   }
   if (name === "quote") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="5" y="3.5" width="14" height="17" rx="2" />
-        <path d="M8.3 7h7.4" />
-        <path d="M8.5 11h2.2M12.9 11h2.2M8.5 14.5h2.2M12.9 14.5h2.2M8.5 18h2.2M12.9 18h2.2" />
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="9" y="4.5" width="14" height="23" rx="3" />
+        <path d="M12.4 9.2h7.2" />
+        <path d="M12.7 14h1.8M17.5 14h1.8M12.7 18.7h1.8M17.5 18.7h1.8M12.7 23.4h1.8M17.5 23.4h1.8" />
       </svg>
     );
   }
   if (name === "saved") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M5 4h12.2L19 5.8V20H5z" />
-        <path d="M8 4v5h7V4" />
-        <path d="M8 20v-6h8v6" />
-        <path d="M10 6.5h3" />
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M7.5 6.5h14.8l2.2 2.2v16.8h-17z" />
+        <path d="M11 6.5v6h9v-6" />
+        <path d="M11 25.5v-8h10v8" />
+        <path d="M13.4 9.5h3.5" />
       </svg>
     );
   }
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8" r="3.5" />
-      <path d="M5.5 20c.8-4 3-6 6.5-6s5.7 2 6.5 6" />
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <circle cx="16" cy="10" r="4.3" />
+      <path d="M7.2 26c1.1-5.6 4-8.4 8.8-8.4s7.7 2.8 8.8 8.4" />
     </svg>
   );
 }
