@@ -202,6 +202,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ?? "https://1g0vserusc.execute-api.eu-west-2.amazonaws.com";
 const EMBEDDED_QUOTE_API_KEY = (import.meta.env.VITE_EMBEDDED_QUOTE_API_KEY ?? "").trim();
 const IS_IOS_BUILD = import.meta.env.MODE === "ios";
+const LOCAL_STORAGE_LOCATION = "this device";
 const APP_BUILD = "2026-06-26-saved-quotes";
 const FLEET_MANAGEMENT_EMAIL = "fleet.management@swyt.nhs.uk";
 
@@ -227,7 +228,7 @@ function BrandHeader() {
 function CopyrightFooter() {
   return (
     <footer className="site-footer" data-build={APP_BUILD}>
-      © {new Date().getFullYear()} South West Yorkshire Teaching Partnership NHS FT
+      © {new Date().getFullYear()} South West Yorkshire Partnership Teaching NHS FT
     </footer>
   );
 }
@@ -237,11 +238,11 @@ function PrivacyNotice() {
     <div className="notice privacy-notice">
       <h3>Privacy notice</h3>
       <p>
-        CARculator stores the quote details, quote reference, date and time, IP address, and browser/device information
+        CARculator stores the quote details, quote reference, date and time, IP address, and device/access information
         for audit and support purposes. We do not store your name, employee number, or email address.
       </p>
       <p>
-        If you choose “Remember my details on this device”, your calculator choices are saved only in this browser on this device.
+        If you choose “Remember my details on this device”, your calculator choices are saved only on this device.
         They are not sent to or stored in the CARculator database for this purpose.
       </p>
     </div>
@@ -1537,7 +1538,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <p className="form-hint">These answers are used only to calculate the estimated net monthly cost.</p>
           {browserSavedQuotes.length > 0 && (
             <div className="notice">
-              <p>You have {browserSavedQuotes.length.toLocaleString("en-GB")} quote{browserSavedQuotes.length === 1 ? "" : "s"} saved in this browser from the last month.</p>
+              <p>You have {browserSavedQuotes.length.toLocaleString("en-GB")} quote{browserSavedQuotes.length === 1 ? "" : "s"} saved on {LOCAL_STORAGE_LOCATION} from the last month.</p>
               <p>Do not use this option on a shared device.</p>
               <button className="secondary-service-button" type="button" onClick={() => setStep(8)}>
                 View saved quotes
@@ -1752,7 +1753,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             </label>
             <p>
               If selected, CARculator will save your employer, tax, pension, mileage, and National Minimum Wage choices
-              in this browser so you do not need to re-enter them next time. We do not store your name, employee number, or email address.
+              on {LOCAL_STORAGE_LOCATION} so you do not need to re-enter them next time. We do not store your name, employee number, or email address.
             </p>
             <button className="text-button" type="button" onClick={clearRememberedQuoteDetails}>
               Clear saved details
@@ -2225,10 +2226,10 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
         <div>
           <h2>Saved quotes on this device</h2>
           <p className="form-hint">
-            These quotes are stored only in this browser. Quotes are kept for up to one month and the most recent {maxBrowserSavedQuotes} are retained.
+            These quotes are stored only on {LOCAL_STORAGE_LOCATION}. Quotes are kept for up to one month and the most recent {maxBrowserSavedQuotes} are retained.
           </p>
           <div className="notice">
-            Do not use this option on a shared device. If you no longer want quotes stored in this browser, use “Clear all saved quotes”.
+            Do not use this option on a shared device. If you no longer want quotes stored on {LOCAL_STORAGE_LOCATION}, use “Clear all saved quotes”.
           </div>
 
           <div className="result-list">
@@ -2286,7 +2287,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           </div>
 
           {browserSavedQuotes.length === 0 && (
-            <div className="notice">No recent quotes are saved in this browser.</div>
+            <div className="notice">No recent quotes are saved on {LOCAL_STORAGE_LOCATION}.</div>
           )}
 
           <div className="button-row">
@@ -2347,7 +2348,7 @@ function AdminPage() {
         <p>Maintain the reference values used by CARculator.</p>
       </div>
       <div className="admin-key-bar">
-        <span>Admin access unlocked for this browser session.</span>
+        <span>Admin access unlocked for this session.</span>
         <button
           type="button"
           className="text-button"

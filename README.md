@@ -1,6 +1,6 @@
 # CARculator
 
-CARculator is a South West Yorkshire NHS Foundation Trust lease-car salary sacrifice calculator.
+CARculator is a South West Yorkshire Partnership Teaching NHS FT lease-car salary sacrifice calculator.
 
 Employees can:
 
@@ -53,4 +53,4 @@ Pushing `main` runs the GitHub Pages workflow. AWS infrastructure is managed fro
 CARculator calculates estimates immediately and does not store employee quote
 selections. The former `QuoteRequests` table and write API have been removed.
 
-© South West Yorkshire NHS Foundation Trust
+© South West Yorkshire Partnership Teaching NHS FT
