@@ -2492,7 +2492,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
             These Deals/Offers use vehicles currently flagged as on offer and the cheapest available rental at {annualMileage.toLocaleString("en-GB")} miles per year. Viewing this page does not save the offer quotes.
           </p>
           <div className="notice">
-            Tick any offers you want to keep, then use “Save selected offers”. If you choose “Select Vehicle”, CARculator will save that one offer first so Fleet Management can refer to the quote reference.
+            Tick any offers you want to keep and then use the “Save selected offers” option at the bottom of this page.
           </div>
           {!IS_IOS_BUILD && (
           <button className="service-button no-print" type="button" onClick={() => window.print()}>
