@@ -6,6 +6,7 @@ const buildVersion = process.env.BUILD_VERSION ?? Date.now().toString();
 export default defineConfig({
   plugins: [react()],
   root: "client",
+  envDir: ".",
   base: process.env.GITHUB_ACTIONS ? "/carculator/" : "/",
   build: {
     outDir: "../dist-web",

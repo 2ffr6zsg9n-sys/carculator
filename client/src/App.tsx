@@ -200,8 +200,16 @@ type AdminTableConfig = {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ?? "https://1g0vserusc.execute-api.eu-west-2.amazonaws.com";
+const EMBEDDED_QUOTE_API_KEY = (import.meta.env.VITE_EMBEDDED_QUOTE_API_KEY ?? "").trim();
 const APP_BUILD = "2026-06-26-saved-quotes";
 const FLEET_MANAGEMENT_EMAIL = "fleet.management@swyt.nhs.uk";
+
+function getInitialQuoteApiKey() {
+  return EMBEDDED_QUOTE_API_KEY
+    || window.sessionStorage.getItem("lease-car-quote-key")
+    || readRememberedQuoteDetails()?.quoteApiKey
+    || "";
+}
 
 function BrandHeader() {
   return (
@@ -3477,10 +3485,8 @@ export function App() {
         ? "tax-estimator"
         : "quote"
   );
-  const [quoteApiKey, setQuoteApiKey] = useState(
-    () => window.sessionStorage.getItem("lease-car-quote-key") ?? readRememberedQuoteDetails()?.quoteApiKey ?? ""
-  );
-  const [draftQuoteApiKey, setDraftQuoteApiKey] = useState(quoteApiKey);
+  const [quoteApiKey, setQuoteApiKey] = useState(getInitialQuoteApiKey);
+  const [draftQuoteApiKey, setDraftQuoteApiKey] = useState(() => getInitialQuoteApiKey());
   const [quoteAccessError, setQuoteAccessError] = useState("");
   const [checkingQuoteAccess, setCheckingQuoteAccess] = useState(false);
 
