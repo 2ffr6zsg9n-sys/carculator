@@ -810,6 +810,44 @@ function VehiclePicker({
   );
 }
 
+type AppTabIconName = "home" | "quote" | "saved" | "details";
+
+function AppTabIcon({ name }: { name: AppTabIconName }) {
+  if (name === "home") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 11.2 12 4l9 7.2" />
+        <path d="M5.5 10.5V20h4.2v-5.6h4.6V20h4.2v-9.5" />
+      </svg>
+    );
+  }
+  if (name === "quote") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="5" y="3.5" width="14" height="17" rx="2" />
+        <path d="M8.3 7h7.4" />
+        <path d="M8.5 11h2.2M12.9 11h2.2M8.5 14.5h2.2M12.9 14.5h2.2M8.5 18h2.2M12.9 18h2.2" />
+      </svg>
+    );
+  }
+  if (name === "saved") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 4h12.2L19 5.8V20H5z" />
+        <path d="M8 4v5h7V4" />
+        <path d="M8 20v-6h8v6" />
+        <path d="M10 6.5h3" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5.5 20c.8-4 3-6 6.5-6s5.7 2 6.5 6" />
+    </svg>
+  );
+}
+
 function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
   const [employers, setEmployers] = useState<Employer[]>([]);
@@ -1517,8 +1555,8 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
   }
 
   return (
-    <section className="service-panel">
-      {step !== 0 && (
+    <section className={IS_IOS_BUILD ? "service-panel ios-app-panel" : "service-panel"}>
+      {!IS_IOS_BUILD && step !== 0 && (
         <div className="progress-steps" aria-label="Quote progress">
           {([
             [1, "1. Your details"],
@@ -1573,6 +1611,49 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
             </button>
           )}
         </div>
+      )}
+
+      {IS_IOS_BUILD && (
+        <nav className="ios-tab-bar no-print" aria-label="CARculator sections">
+          <button
+            type="button"
+            className={step === 0 ? "active" : ""}
+            onClick={() => {
+              setStatus({ type: "idle" });
+              setStep(0);
+            }}
+          >
+            <AppTabIcon name="home" />
+            <span>Home</span>
+          </button>
+          <button
+            type="button"
+            className={step === 3 || step === 4 || step === 6 || step === 7 ? "active" : ""}
+            onClick={startNewQuote}
+          >
+            <AppTabIcon name="quote" />
+            <span>New Quote</span>
+          </button>
+          <button
+            type="button"
+            className={step === 8 ? "active" : ""}
+            onClick={() => {
+              setStatus({ type: "idle" });
+              setStep(8);
+            }}
+          >
+            <AppTabIcon name="saved" />
+            <span>Saved</span>
+          </button>
+          <button
+            type="button"
+            className={step === 1 || step === 2 ? "active" : ""}
+            onClick={openMyDetails}
+          >
+            <AppTabIcon name="details" />
+            <span>My Details</span>
+          </button>
+        </nav>
       )}
 
       {step === 0 && (
