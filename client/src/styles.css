@@ -488,6 +488,9 @@ button:focus {
 .vehicle-title-button:hover {
   color: #0b0c0c;
 }
+.vehicle-description-trigger {
+  cursor: default;
+}
 .quote-result > p,
 .quote-result p {
   color: var(--text-muted);

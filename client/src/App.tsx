@@ -1049,6 +1049,13 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
     setStep(1);
   }
 
+  function openCostBreakdown(result: QuoteResult, returnStep: 4 | 7) {
+    setSelectedBreakdownResult(result);
+    setResultReturnStep(returnStep);
+    setStatus({ type: "idle" });
+    setStep(6);
+  }
+
   function validateDetails() {
     if (!selectedEmployer) return "Please choose your employer.";
     if (!selectedTaxRate) return "Please choose your income tax level.";
@@ -1935,38 +1942,24 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <div className="result-list">
             {results.map((result) => (
               <article className="quote-result" key={result.vehicle.vehicleId}>
-                <div>
-                  <h3>
-                    <button
-                      type="button"
-                      className="vehicle-title-button"
-                      onClick={() => {
-                        setSelectedBreakdownResult(result);
-                        setResultReturnStep(4);
-                        setStatus({ type: "idle" });
-                        setStep(6);
-                      }}
-                    >
-                      {result.vehicle.vehicleName}
-                    </button>
-                  </h3>
+                <div
+                  className="vehicle-description-trigger"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openCostBreakdown(result, 4)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openCostBreakdown(result, 4);
+                    }
+                  }}
+                >
+                  <h3>{result.vehicle.vehicleName}</h3>
                   {result.quoteReference && (
                     <p className="quote-reference">Quote reference: {result.quoteReference}</p>
                   )}
                   <p>{result.vehicle.fuelType} · List price {currency(result.vehicle.listPrice)} · BIK {percent(result.bikRate)} ({result.bikSource})</p>
                 </div>
-                <button
-                  className="secondary-service-button no-print"
-                  type="button"
-                  onClick={() => {
-                    setSelectedBreakdownResult(result);
-                    setResultReturnStep(4);
-                    setStatus({ type: "idle" });
-                    setStep(6);
-                  }}
-                >
-                  View cost breakdown
-                </button>
                 {result.nmwBlocked ? (
                   <div className="message error">
                     This car would take the estimated hourly rate to {currency(result.nmwHourlyRate ?? 0)}, which is below the National Minimum Wage rate of {currency(result.nmwMinimumRate ?? 0)} for the selected age range.
@@ -2232,38 +2225,24 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
           <div className="result-list">
             {offerResults.map((result) => (
               <article className="quote-result" key={`${result.vehicle.vehicleId}-${result.quoteReference ?? "offer"}`}>
-                <div>
-                  <h3>
-                    <button
-                      type="button"
-                      className="vehicle-title-button"
-                      onClick={() => {
-                        setSelectedBreakdownResult(result);
-                        setResultReturnStep(7);
-                        setStatus({ type: "idle" });
-                        setStep(6);
-                      }}
-                    >
-                      {result.vehicle.vehicleName}
-                    </button>
-                  </h3>
+                <div
+                  className="vehicle-description-trigger"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openCostBreakdown(result, 7)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openCostBreakdown(result, 7);
+                    }
+                  }}
+                >
+                  <h3>{result.vehicle.vehicleName}</h3>
                   {result.quoteReference && (
                     <p className="quote-reference">Quote reference: {result.quoteReference}</p>
                   )}
                   <p>Deal/Offer · {result.vehicle.fuelType} · List price {currency(result.vehicle.listPrice)} · BIK {percent(result.bikRate)} ({result.bikSource})</p>
                 </div>
-                <button
-                  className="secondary-service-button no-print"
-                  type="button"
-                  onClick={() => {
-                    setSelectedBreakdownResult(result);
-                    setResultReturnStep(7);
-                    setStatus({ type: "idle" });
-                    setStep(6);
-                  }}
-                >
-                  View cost breakdown
-                </button>
                 {result.nmwBlocked ? (
                   <div className="message error">
                     This car would take the estimated hourly rate to {currency(result.nmwHourlyRate ?? 0)}, which is below the National Minimum Wage rate of {currency(result.nmwMinimumRate ?? 0)} for the selected age range.
