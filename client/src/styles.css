@@ -22,6 +22,17 @@ body {
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
 }
+html.ios-home-no-scroll,
+body.ios-home-no-scroll {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body.ios-home-no-scroll {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+}
 button, input, select, textarea { font: inherit; }
 .inline-link-button {
   border: 0;

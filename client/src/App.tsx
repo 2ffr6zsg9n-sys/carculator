@@ -932,6 +932,16 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
   }, [step]);
 
   useEffect(() => {
+    if (!IS_IOS_BUILD) return undefined;
+    document.body.classList.toggle("ios-home-no-scroll", step === 0);
+    document.documentElement.classList.toggle("ios-home-no-scroll", step === 0);
+    return () => {
+      document.body.classList.remove("ios-home-no-scroll");
+      document.documentElement.classList.remove("ios-home-no-scroll");
+    };
+  }, [step]);
+
+  useEffect(() => {
     async function loadReferenceData() {
       try {
         const endpoints = [
