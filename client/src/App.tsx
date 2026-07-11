@@ -1822,20 +1822,19 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
 
       {step === 9 && (
         <form className="app-setup" onSubmit={startRegistrationSetup}>
-          <h2>Set up CARculator</h2>
-          <p className="form-hint">
-            CARculator saves your calculator preferences on this iPhone so future quotes are quicker to prepare.
-          </p>
+          <h2>Terms of Use and Privacy Notice</h2>
           <div className="notice registration-consent-panel">
-            <h3>Your data</h3>
+            <p className="form-hint">
+              Please read and accept the following before using CARculator.
+            </p>
             <ul>
               <li>CARculator is intended only for employees of South West Yorkshire Partnership NHS FT.</li>
-              <li>Your employer, tax, pension, mileage, and National Minimum Wage choices are saved on this device.</li>
-              <li>Quotes are stored on this device so you can return to them later.</li>
-              <li>A copy of each quote is saved to the Fleet Management database.</li>
+              <li>Your employer, tax, pension, mileage and National Minimum Wage choices are stored on this device to make future quotes quicker to prepare.</li>
+              <li>Quote details are stored on this device so you can return to them later.</li>
+              <li>A copy of each quote is saved to the Fleet Management database for audit, support and order-processing purposes.</li>
               <li>Saved quotes older than one month are removed from this device when you next use CARculator.</li>
               <li>Only the most recent {maxBrowserSavedQuotes} saved quotes are kept on this device.</li>
-              <li>We do not store your name, employee number, or email address.</li>
+              <li>CARculator does not store your name, employee number or email address.</li>
             </ul>
             <label className="checkbox-row">
               <input
@@ -1844,11 +1843,11 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
                 onChange={(event) => setStorageConsent(event.target.checked)}
                 required
               />
-              I am happy for CARculator to save these details on this device and to save a copy of each quote to the Fleet Management database.
+              I have read and accept these terms, and consent to CARculator storing the information described above.
             </label>
           </div>
           {status.type === "error" && <div className="message error">{status.message}</div>}
-          <button className="service-button" type="submit">Start setup</button>
+          <button className="service-button" type="submit">Accept and continue</button>
         </form>
       )}
 
