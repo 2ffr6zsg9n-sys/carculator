@@ -1690,7 +1690,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
   }
 
   return (
-    <section className={IS_IOS_BUILD ? "service-panel ios-app-panel" : "service-panel"}>
+    <section className={IS_IOS_BUILD ? `service-panel ios-app-panel${step === 0 ? " ios-home-panel" : ""}` : "service-panel"}>
       {!IS_IOS_BUILD && step !== 0 && (
         <div className="progress-steps" aria-label="Quote progress">
           {([

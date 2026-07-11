@@ -174,6 +174,11 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   padding: 0 0 calc(84px + env(safe-area-inset-bottom));
   background: transparent;
 }
+.ios-home-panel {
+  height: calc(100vh - 72px - 84px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow: hidden;
+  padding-bottom: 0;
+}
 .ios-tab-bar {
   position: fixed;
   right: 0;
@@ -319,6 +324,10 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
 }
 .app-home {
   max-width: 760px;
+}
+.ios-home-panel .app-home {
+  height: 100%;
+  overflow: hidden;
 }
 .app-setup {
   max-width: 760px;
