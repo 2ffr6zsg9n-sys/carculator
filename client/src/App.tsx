@@ -201,6 +201,7 @@ type AdminTableConfig = {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ?? "https://1g0vserusc.execute-api.eu-west-2.amazonaws.com";
 const EMBEDDED_QUOTE_API_KEY = (import.meta.env.VITE_EMBEDDED_QUOTE_API_KEY ?? "").trim();
+const IS_IOS_BUILD = import.meta.env.MODE === "ios";
 const APP_BUILD = "2026-06-26-saved-quotes";
 const FLEET_MANAGEMENT_EMAIL = "fleet.management@swyt.nhs.uk";
 
@@ -2079,7 +2080,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
               <thead>
                 <tr>
                   <th scope="col">Calculation</th>
-                  <th scope="col">Annual</th>
+                  {!IS_IOS_BUILD && <th scope="col">Annual</th>}
                   <th scope="col">Monthly</th>
                 </tr>
               </thead>
@@ -2087,7 +2088,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                 {quoteBreakdown(selectedBreakdownResult).main.map(([label, amount, highlighted]) => (
                   <tr key={label} className={highlighted ? "highlighted" : ""}>
                     <th scope="row">{label}</th>
-                    <td>{currency(amount)}</td>
+                    {!IS_IOS_BUILD && <td>{currency(amount)}</td>}
                     <td>{currency(amount / 12)}</td>
                   </tr>
                 ))}
@@ -2101,7 +2102,7 @@ function QuoteRequestPage({ quoteApiKey }: { quoteApiKey: string }) {
                 {quoteBreakdown(selectedBreakdownResult).employer.map(([label, amount, highlighted]) => (
                   <tr key={label} className={highlighted ? "highlighted" : ""}>
                     <th scope="row">{label}</th>
-                    <td>{currency(amount)}</td>
+                    {!IS_IOS_BUILD && <td>{currency(amount)}</td>}
                     <td>{currency(amount / 12)}</td>
                   </tr>
                 ))}
@@ -2953,13 +2954,17 @@ function AdminQuotes({ apiKey }: { apiKey: string }) {
         <div className="breakdown-table-wrap">
           <table className="breakdown-table">
             <thead>
-              <tr><th>Calculation</th><th>Annual</th><th>Monthly</th></tr>
+              <tr>
+                <th>Calculation</th>
+                {!IS_IOS_BUILD && <th>Annual</th>}
+                <th>Monthly</th>
+              </tr>
             </thead>
             <tbody>
               {storedQuoteMainRows(selectedQuote).map(([label, amount, highlighted]) => (
                 <tr key={label} className={highlighted ? "highlighted" : ""}>
                   <th scope="row">{label}</th>
-                  <td>{currency(amount)}</td>
+                  {!IS_IOS_BUILD && <td>{currency(amount)}</td>}
                   <td>{currency(amount / 12)}</td>
                 </tr>
               ))}
@@ -2973,7 +2978,7 @@ function AdminQuotes({ apiKey }: { apiKey: string }) {
               {storedQuoteEmployerRows(selectedQuote).map(([label, amount, highlighted]) => (
                 <tr key={label} className={highlighted ? "highlighted" : ""}>
                   <th scope="row">{label}</th>
-                  <td>{currency(amount)}</td>
+                  {!IS_IOS_BUILD && <td>{currency(amount)}</td>}
                   <td>{currency(amount / 12)}</td>
                 </tr>
               ))}
