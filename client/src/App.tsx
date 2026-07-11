@@ -1828,14 +1828,15 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           </p>
           <div className="notice registration-consent-panel">
             <h3>Your data</h3>
-            <p>
-              CARculator is intended only for employees of South West Yorkshire Partnership NHS FT.
-              We will save your employer, tax, pension, mileage, and National Minimum Wage choices on this device.
-              Quotes are stored on this device so you can return to them later, and a copy of each quote is saved to the
-              Fleet Management database. Saved quotes older than one month are removed from this device when you next use
-              CARculator, and only the most recent {maxBrowserSavedQuotes} saved quotes are kept on this device. We do not
-              store your name, employee number, or email address.
-            </p>
+            <ul>
+              <li>CARculator is intended only for employees of South West Yorkshire Partnership NHS FT.</li>
+              <li>Your employer, tax, pension, mileage, and National Minimum Wage choices are saved on this device.</li>
+              <li>Quotes are stored on this device so you can return to them later.</li>
+              <li>A copy of each quote is saved to the Fleet Management database.</li>
+              <li>Saved quotes older than one month are removed from this device when you next use CARculator.</li>
+              <li>Only the most recent {maxBrowserSavedQuotes} saved quotes are kept on this device.</li>
+              <li>We do not store your name, employee number, or email address.</li>
+            </ul>
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -1843,7 +1844,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
                 onChange={(event) => setStorageConsent(event.target.checked)}
                 required
               />
-              I am happy for CARculator to save these details on this device.
+              I am happy for CARculator to save these details on this device and to save a copy of each quote to the Fleet Management database.
             </label>
           </div>
           {status.type === "error" && <div className="message error">{status.message}</div>}
