@@ -2424,6 +2424,10 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
             />
           </div>
 
+          <p className="form-hint">
+            When the email opens, please enter your NHS work email address and employee number in the highlighted placeholder lines before sending it to Fleet Management.
+          </p>
+
           <div className="button-row">
             <button className="secondary-service-button" type="button" onClick={() => setStep(resultReturnStep)}>Back to quotes</button>
             <button className="service-button large-email-button" type="submit">Email To Fleet Management</button>
