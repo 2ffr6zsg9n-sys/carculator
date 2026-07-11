@@ -208,6 +208,10 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   stroke-width: 2.35;
   stroke-linecap: round;
   stroke-linejoin: round;
+  transition: transform 160ms cubic-bezier(.2, 1.4, .35, 1);
+}
+.ios-tab-bar button:active svg {
+  transform: translateY(-5px) scale(1.18);
 }
 .ios-tab-bar span {
   white-space: nowrap;
@@ -293,6 +297,10 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   stroke-width: 2.35;
   stroke-linecap: round;
   stroke-linejoin: round;
+  transition: transform 160ms cubic-bezier(.2, 1.4, .35, 1);
+}
+.app-home-card:active .app-home-card-icon svg {
+  transform: translateY(-5px) scale(1.18);
 }
 .app-home-card-text {
   display: grid;
@@ -312,6 +320,16 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
 .app-home-card:active,
 .app-home-card:hover {
   background: var(--nhs-light-blue);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ios-tab-bar svg,
+  .app-home-card-icon svg {
+    transition: none;
+  }
+  .ios-tab-bar button:active svg,
+  .app-home-card:active .app-home-card-icon svg {
+    transform: none;
+  }
 }
 
 label,
