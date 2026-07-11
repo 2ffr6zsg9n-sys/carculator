@@ -195,6 +195,7 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   background: transparent;
   color: #6f7580;
   cursor: pointer;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -205,18 +206,42 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   font-size: 11px;
   font-weight: 700;
   line-height: 1.1;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 180ms ease, transform 180ms cubic-bezier(.2, 1.4, .35, 1);
+}
+.ios-tab-bar button::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  width: 46px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--nhs-light-blue);
+  opacity: 0;
+  transform: scale(.65);
+  transition: opacity 180ms ease, transform 220ms cubic-bezier(.2, 1.45, .35, 1);
 }
 .ios-tab-bar button.active {
   color: var(--nhs-blue);
+}
+.ios-tab-bar button.active::before {
+  opacity: 1;
+  transform: scale(1);
 }
 .ios-tab-bar button:disabled {
   color: #c7cbd1;
   cursor: default;
 }
+.ios-tab-bar button:disabled::before {
+  opacity: 0;
+}
 .ios-tab-bar button:disabled:active svg {
   transform: none;
 }
 .ios-tab-bar svg {
+  position: relative;
+  z-index: 1;
   width: 31px;
   height: 31px;
   fill: none;
@@ -224,13 +249,33 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
   stroke-width: 2.35;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: transform 160ms cubic-bezier(.2, 1.4, .35, 1);
+  transition: transform 220ms cubic-bezier(.18, 1.55, .35, 1), stroke-width 180ms ease;
+}
+.ios-tab-bar button.active svg {
+  stroke-width: 2.65;
+  animation: ios-tab-settle 360ms cubic-bezier(.18, 1.55, .35, 1);
 }
 .ios-tab-bar button:active svg {
-  transform: translateY(-5px) scale(1.18);
+  transform: translateY(-7px) scale(1.26) rotate(-3deg);
+}
+.ios-tab-bar button:active::before {
+  opacity: 1;
+  transform: scale(1.12);
 }
 .ios-tab-bar span {
+  position: relative;
+  z-index: 1;
   white-space: nowrap;
+  transition: transform 180ms cubic-bezier(.2, 1.4, .35, 1);
+}
+.ios-tab-bar button.active span {
+  transform: translateY(-1px);
+}
+@keyframes ios-tab-settle {
+  0% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(-6px) scale(1.22); }
+  72% { transform: translateY(1px) scale(.96); }
+  100% { transform: translateY(0) scale(1); }
 }
 
 .progress-steps {
@@ -356,8 +401,12 @@ h3 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ios-tab-bar svg,
+  .ios-tab-bar button,
+  .ios-tab-bar button::before,
+  .ios-tab-bar span,
   .app-home-card-icon svg {
     transition: none;
+    animation: none;
   }
   .ios-tab-bar button:active svg,
   .app-home-card:active .app-home-card-icon svg {
