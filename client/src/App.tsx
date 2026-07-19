@@ -952,6 +952,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
     earliestDeliveryDate: "",
     replacementRegistration: ""
   });
+  const [referenceDataReady, setReferenceDataReady] = useState(false);
   const [status, setStatus] = useState<{ type: "idle" | "loading" | "success" | "error"; message?: string }>({ type: "loading" });
 
   useEffect(() => {
@@ -1058,9 +1059,11 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           setStep(returnStep === "details" ? 1 : remembered || readBrowserSavedQuotes().length > 0 ? 0 : 9);
         }
         await waitForMinimumLoading(loadingStartedAt);
+        setReferenceDataReady(true);
         setStatus({ type: "idle" });
       } catch (error) {
         await waitForMinimumLoading(loadingStartedAt);
+        setReferenceDataReady(true);
         setStatus({
           type: "error",
           message: error instanceof Error ? error.message : "The calculator is temporarily unavailable."
@@ -1730,7 +1733,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
     setStep(IS_IOS_BUILD ? 0 : 3);
   }
 
-  if (status.type === "loading" && employers.length === 0) {
+  if (!referenceDataReady && status.type === "loading") {
     return (
       <section className="service-panel loading-panel">
         <BrandHeader />
