@@ -205,7 +205,7 @@ const IS_IOS_BUILD = import.meta.env.MODE === "ios";
 const LOCAL_STORAGE_LOCATION = "this device";
 const APP_BUILD = "2026-06-26-saved-quotes";
 const FLEET_MANAGEMENT_EMAIL = "fleet.management@swyt.nhs.uk";
-const MINIMUM_LOADING_MS = 3100;
+const MINIMUM_LOADING_MS = 2500;
 
 function waitForMinimumLoading(startedAt: number, minimumMs = MINIMUM_LOADING_MS) {
   const remaining = minimumMs - (Date.now() - startedAt);
