@@ -225,6 +225,27 @@ function BrandHeader() {
   );
 }
 
+function LoadingCar({ message = "Loading" }: { message?: string }) {
+  return (
+    <div className="loading-car-wrap" role="status" aria-live="polite">
+      <div className="loading-road" aria-hidden="true">
+        <div className="loading-car-scene">
+          <div className="loading-car">
+            <div className="loading-car-roof" />
+            <div className="loading-car-body" />
+            <div className="loading-car-window" />
+            <div className="loading-wheel loading-wheel-front" />
+            <div className="loading-wheel loading-wheel-back" />
+          </div>
+          <div className="loading-tow-line" />
+          <div className="loading-banner">{message}</div>
+        </div>
+      </div>
+      <p className="loading-note">{message}…</p>
+    </div>
+  );
+}
+
 function CopyrightFooter() {
   return (
     <footer className="site-footer" data-build={APP_BUILD}>
@@ -1701,7 +1722,12 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
   }
 
   if (status.type === "loading" && employers.length === 0) {
-    return <section className="service-panel"><p className="loading-note">Loading the calculator…</p></section>;
+    return (
+      <section className="service-panel loading-panel">
+        <BrandHeader />
+        <LoadingCar message="Loading CARculator" />
+      </section>
+    );
   }
 
   return (
@@ -4011,6 +4037,7 @@ export function App() {
               <button className="service-button" type="submit" disabled={checkingQuoteAccess}>
                 {checkingQuoteAccess ? "Checking…" : "Continue"}
               </button>
+              {checkingQuoteAccess && <LoadingCar message="Loading" />}
             </form>
           </section>
         </main>
