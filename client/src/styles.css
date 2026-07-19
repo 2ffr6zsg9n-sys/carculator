@@ -1190,7 +1190,7 @@ button:focus {
   bottom: 22px;
   width: 360px;
   height: 72px;
-  animation: loading-car-drive 2.9s linear infinite;
+  animation: loading-car-drive 3.1s linear infinite;
 }
 .loading-car {
   position: absolute;

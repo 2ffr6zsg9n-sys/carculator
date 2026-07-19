@@ -205,6 +205,12 @@ const IS_IOS_BUILD = import.meta.env.MODE === "ios";
 const LOCAL_STORAGE_LOCATION = "this device";
 const APP_BUILD = "2026-06-26-saved-quotes";
 const FLEET_MANAGEMENT_EMAIL = "fleet.management@swyt.nhs.uk";
+const MINIMUM_LOADING_MS = 3100;
+
+function waitForMinimumLoading(startedAt: number, minimumMs = MINIMUM_LOADING_MS) {
+  const remaining = minimumMs - (Date.now() - startedAt);
+  return remaining > 0 ? new Promise((resolve) => window.setTimeout(resolve, remaining)) : Promise.resolve();
+}
 
 function getInitialQuoteApiKey() {
   return EMBEDDED_QUOTE_API_KEY
@@ -964,6 +970,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
 
   useEffect(() => {
     async function loadReferenceData() {
+      const loadingStartedAt = Date.now();
       try {
         const endpoints = [
           "employers",
@@ -1050,8 +1057,10 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
           window.sessionStorage.removeItem("carculator-estimated-tax-rate");
           setStep(returnStep === "details" ? 1 : remembered || readBrowserSavedQuotes().length > 0 ? 0 : 9);
         }
+        await waitForMinimumLoading(loadingStartedAt);
         setStatus({ type: "idle" });
       } catch (error) {
+        await waitForMinimumLoading(loadingStartedAt);
         setStatus({
           type: "error",
           message: error instanceof Error ? error.message : "The calculator is temporarily unavailable."
@@ -3956,6 +3965,7 @@ export function App() {
 
   async function unlockQuoteSystem(event: FormEvent) {
     event.preventDefault();
+    const loadingStartedAt = Date.now();
     setCheckingQuoteAccess(true);
     setQuoteAccessError("");
     const nextKey = draftQuoteApiKey.trim();
@@ -3970,8 +3980,10 @@ export function App() {
       if (response.status === 401) throw new Error("The passkey is not correct.");
       if (!response.ok) throw new Error("CARculator could not contact the quote service. Please try again.");
       window.sessionStorage.setItem("lease-car-quote-key", nextKey);
+      await waitForMinimumLoading(loadingStartedAt);
       setQuoteApiKey(nextKey);
     } catch (error) {
+      await waitForMinimumLoading(loadingStartedAt);
       setQuoteAccessError(
         error instanceof TypeError
           ? "CARculator could not contact the quote service. Please refresh the page and try again."
