@@ -1786,6 +1786,21 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
               </button>
             )
           )}
+          {(browserSavedQuotes.length > 0 || step === 7) && (
+            step === 7 ? (
+              <span className="current">6. Offers/Deals</span>
+            ) : (
+              <button
+                type="button"
+                className="completed"
+                disabled={status.type === "loading"}
+                aria-disabled={status.type === "loading"}
+                onClick={() => void calculateOfferQuotes()}
+              >
+                6. Offers/Deals
+              </button>
+            )
+          )}
           {IS_IOS_BUILD && (hasSavedDetails || browserSavedQuotes.length > 0) && (
             <button
               type="button"
