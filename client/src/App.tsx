@@ -205,7 +205,7 @@ const IS_IOS_BUILD = import.meta.env.MODE === "ios";
 const LOCAL_STORAGE_LOCATION = "this device";
 const APP_BUILD = "2026-06-26-saved-quotes";
 const FLEET_MANAGEMENT_EMAIL = "fleet.management@swyt.nhs.uk";
-const MINIMUM_LOADING_MS = 2500;
+const MINIMUM_LOADING_MS = IS_IOS_BUILD ? 2500 : 0;
 
 function waitForMinimumLoading(startedAt: number, minimumMs = MINIMUM_LOADING_MS) {
   const remaining = minimumMs - (Date.now() - startedAt);
@@ -1737,7 +1737,7 @@ function QuoteRequestPage({ quoteApiKey, onOpenTaxEstimator }: { quoteApiKey: st
     return (
       <section className="service-panel loading-panel">
         <BrandHeader />
-        <LoadingCar message="Loading CARculator" />
+        {IS_IOS_BUILD ? <LoadingCar message="Loading CARculator" /> : <p className="loading-note">Loading CARculator…</p>}
       </section>
     );
   }
@@ -4052,7 +4052,9 @@ export function App() {
               <button className="service-button" type="submit" disabled={checkingQuoteAccess}>
                 {checkingQuoteAccess ? "Checking…" : "Continue"}
               </button>
-              {checkingQuoteAccess && <LoadingCar message="Loading" />}
+              {checkingQuoteAccess && (
+                IS_IOS_BUILD ? <LoadingCar message="Loading" /> : <p className="loading-note">Loading…</p>
+              )}
             </form>
           </section>
         </main>
